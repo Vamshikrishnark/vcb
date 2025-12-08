@@ -58,8 +58,20 @@ class TestCaseFrame:
         ttk.Button(btns, text="✏ Rename Step", command=self.rename_selected_step, style="Ghost.TButton").grid(row=0, column=6, padx=2)
         ttk.Button(btns, text="☑ Select All", command=self.select_all_steps, style="Ghost.TButton").grid(row=0, column=7, padx=2)
         ttk.Button(btns, text="☐ Unselect All", command=self.unselect_all_steps, style="Ghost.TButton").grid(row=0, column=8, padx=2)
-        self.toggle_output_btn = ttk.Button(btns, text="📊 Show Output", command=self.toggle_output, style="Ghost.TButton")
-        self.toggle_output_btn.grid(row=0, column=9, padx=2)
+        
+        # Second row for category filtering
+        btns2 = ttk.Frame(self.frame, style="CaseInner.TFrame")
+        btns2.pack(pady=(0, 10), padx=12)
+        
+        ttk.Label(btns2, text="Filter by Category:", style="Case.TLabelframe.Label").grid(row=0, column=0, padx=2)
+        ttk.Button(btns2, text="All", command=lambda: self.filter_by_category(None), style="Ghost.TButton").grid(row=0, column=1, padx=2)
+        ttk.Button(btns2, text="Setup", command=lambda: self.filter_by_category("Setup"), style="Ghost.TButton").grid(row=0, column=2, padx=2)
+        ttk.Button(btns2, text="Validation", command=lambda: self.filter_by_category("Validation"), style="Ghost.TButton").grid(row=0, column=3, padx=2)
+        ttk.Button(btns2, text="Cleanup", command=lambda: self.filter_by_category("Cleanup"), style="Ghost.TButton").grid(row=0, column=4, padx=2)
+        ttk.Button(btns2, text="Critical", command=lambda: self.filter_by_category("Critical"), style="Ghost.TButton").grid(row=0, column=5, padx=2)
+        
+        self.toggle_output_btn = ttk.Button(btns2, text="📊 Show Output", command=self.toggle_output, style="Ghost.TButton")
+        self.toggle_output_btn.grid(row=0, column=6, padx=2)
 
         # Search bar
         self.search_var = tk.StringVar()
@@ -146,7 +158,25 @@ class TestCaseFrame:
         step.frame.configure(style="Step.TLabelframe")
         step.frame.pack(fill="x", pady=8)
         self._bind_step_clicks(step, len(self.steps))
+        
+        # Bind category change to update colors
+        step.category_dropdown.bind("<<ComboboxSelected>>", lambda e, s=step: self.update_step_category_color(s))
+        
         self.steps.append(step)
+    
+    def update_step_category_color(self, step):
+        """Update step frame border color based on category"""
+        category_colors = {
+            "General": "#64748b",
+            "Setup": "#3b82f6", 
+            "Validation": "#10b981",
+            "Cleanup": "#f59e0b",
+            "Critical": "#ef4444"
+        }
+        category = step.category.get()
+        # We'll update the label color to indicate category
+        color = category_colors.get(category, "#64748b")
+        step.frame.configure(text=f"{step.step_name} [{category}]")
 
     def select_step(self, index):
         # Toggle selection: if clicking the same step, unselect it
@@ -318,6 +348,13 @@ class TestCaseFrame:
     def clear_filter(self):
         self.search_var.set("")
         self.filter_steps()
+    
+    def filter_by_category(self, category=None):
+        """Filter steps by category. If category is None, show all steps."""
+        for step in self.steps:
+            step.frame.pack_forget()
+            if category is None or step.category.get() == category:
+                step.frame.pack(fill="x", pady=8)
 
 
     def run(self):
@@ -338,10 +375,47 @@ class TestCaseFrame:
 
             log_lines = [f"[{timestamp}] Running {self.name}"]
             html_report = [f"<h2>Test Case: {self.name}</h2><ul>"]
+            
+            # Track execution metrics
+            total_steps = len(self.steps)
+            executed_steps = 0
+            skipped_steps = 0
+            previous_step_passed = None
 
             for i, step in enumerate(self.steps, 1):
                 try:
                     step_data = step.get_step_data()
+                    run_condition = step_data.get("run_condition", "Always")
+                    category = step_data.get("category", "General")
+                    
+                    # Check conditional execution
+                    should_run = True
+                    skip_reason = ""
+                    
+                    if run_condition == "Skip":
+                        should_run = False
+                        skip_reason = "Marked as Skip"
+                    elif run_condition == "If Previous Passed" and previous_step_passed is False:
+                        should_run = False
+                        skip_reason = "Previous step failed"
+                    elif run_condition == "If Previous Failed" and previous_step_passed is True:
+                        should_run = False
+                        skip_reason = "Previous step passed"
+                    elif run_condition == "If Previous Passed" and previous_step_passed is None and i > 1:
+                        should_run = False
+                        skip_reason = "Previous step had no result"
+                    
+                    if not should_run:
+                        msg = f"⏭ Step {i} [{category}]: SKIPPED - {skip_reason}"
+                        self.output.insert(tk.END, msg + "\n")
+                        log_lines.append(f"[{datetime.now()}] {msg}")
+                        html_report.append(f"<li style='color: #888;'>{msg}</li>")
+                        skipped_steps += 1
+                        continue
+                    
+                    executed_steps += 1
+                    step_start_time = time.time()
+                    
                     delay = int(step_data["details"].get("step_delay", 0))
                     if delay > 0:
                         msg = f"⏱ Waiting {delay} seconds before Step {i}"
@@ -350,7 +424,7 @@ class TestCaseFrame:
                         time.sleep(delay)
                         log_lines.append(f"[{datetime.now()}] {msg}")
 
-                    msg = f"➡ Step {i}: {step_data['type']}"
+                    msg = f"➡ Step {i} [{category}]: {step_data['type']}"
                     self.output.insert(tk.END, msg + "\n")
                     details = step_data["details"]
                     log_lines.append(f"[{datetime.now()}] {msg}")
@@ -501,25 +575,66 @@ class TestCaseFrame:
                             cursor.close()
                             conn.close()
 
-                    result_msg = f"{'✔️' if passed else '❌'} Step {i} {'passed' if passed else 'failed'}"
+                    # Calculate execution time for this step
+                    step_end_time = time.time()
+                    step_execution_time = step_end_time - step_start_time
+                    step.execution_time = step_execution_time
+                    step.last_result = "PASS" if passed else "FAIL"
+                    previous_step_passed = passed
+                    
+                    result_msg = f"{'✔️' if passed else '❌'} Step {i} [{category}] {'passed' if passed else 'failed'} ({step_execution_time:.2f}s)"
                     self.output.insert(tk.END, result_msg + "\n")
-                    html_report.append(f"<li>{result_msg}</li>")
+                    
+                    # Enhanced HTML reporting with color coding
+                    color = "#10b981" if passed else "#ef4444"
+                    html_report.append(f"<li style='color: {color};'>{result_msg}</li>")
                     log_lines.append(f"[{datetime.now()}] {result_msg}")
                     self.output.update()
                     if not passed:
                         success = False
 
                 except Exception as e:
-                    msg = f"❌ Error in step {i}: {e}"
+                    step_end_time = time.time()
+                    step_execution_time = step_end_time - step_start_time if 'step_start_time' in locals() else 0
+                    step.execution_time = step_execution_time
+                    step.last_result = "ERROR"
+                    previous_step_passed = False
+                    executed_steps += 1
+                    
+                    msg = f"❌ Error in step {i}: {e} ({step_execution_time:.2f}s)"
                     self.output.insert(tk.END, msg + "\n")
-                    html_report.append(f"<li>{msg}</li>")
+                    html_report.append(f"<li style='color: #ef4444;'>{msg}</li>")
                     log_lines.append(f"[{datetime.now()}] {msg}")
                     success = False
 
-            final_msg = "✅ Done."
+            # Calculate total execution time
+            total_execution_time = sum(step.execution_time for step in self.steps if hasattr(step, 'execution_time'))
+            
+            # Generate execution summary
+            final_msg = f"\n{'✅ PASSED' if success else '❌ FAILED'}"
+            summary = f"\n📊 Execution Summary:\n"
+            summary += f"   • Total Steps: {total_steps}\n"
+            summary += f"   • Executed: {executed_steps}\n"
+            summary += f"   • Skipped: {skipped_steps}\n"
+            summary += f"   • Total Time: {total_execution_time:.2f}s\n"
+            
             self.output.insert(tk.END, final_msg + "\n")
-            html_report.append(f"<li>{final_msg}</li></ul>")
+            self.output.insert(tk.END, summary)
+            
+            # Enhanced HTML summary
+            html_report.append(f"</ul>")
+            html_report.append(f"<div style='margin-top: 20px; padding: 15px; background: #f8fafc; border-radius: 8px;'>")
+            html_report.append(f"<h3 style='margin-top: 0;'>📊 Execution Summary</h3>")
+            html_report.append(f"<p><strong>Status:</strong> <span style='color: {'#10b981' if success else '#ef4444'};'>{('PASSED' if success else 'FAILED')}</span></p>")
+            html_report.append(f"<p><strong>Total Steps:</strong> {total_steps}</p>")
+            html_report.append(f"<p><strong>Executed:</strong> {executed_steps}</p>")
+            html_report.append(f"<p><strong>Skipped:</strong> {skipped_steps}</p>")
+            html_report.append(f"<p><strong>Total Execution Time:</strong> {total_execution_time:.2f}s</p>")
+            html_report.append(f"<p><strong>Timestamp:</strong> {timestamp}</p>")
+            html_report.append(f"</div>")
+            
             log_lines.append(f"[{datetime.now()}] {final_msg}")
+            log_lines.append(f"[{datetime.now()}] {summary}")
             self.last_result = "PASS" if success else "FAIL"
 
             safe_name = re.sub(r'[^a-zA-Z0-9_\-]', '_', self.name)
@@ -741,7 +856,9 @@ class TestCaseGUI:
         ttk.Button(btns, text="🗑️ Delete", command=self.delete_case, style="Danger.TButton").grid(row=0, column=2, padx=2)
         ttk.Button(btns, text="📤 Export All", command=self.export_all, style="Ghost.TButton").grid(row=0, column=3, padx=2)
         ttk.Button(btns, text="📥 Import All", command=self.import_all, style="Ghost.TButton").grid(row=0, column=4, padx=2)
-        ttk.Button(btns, text="▶️ Run All Cases", command=self.run_all_cases, style="Accent.TButton").grid(row=0, column=5, padx=2)
+        ttk.Button(btns, text="📊 Export Reports to Excel", command=self.export_reports_to_excel, style="Ghost.TButton").grid(row=0, column=5, padx=2)
+        ttk.Button(btns, text="▶️ Run All Sequential", command=self.run_all_cases, style="Accent.TButton").grid(row=0, column=6, padx=2)
+        ttk.Button(btns, text="⚡ Run All Parallel", command=self.run_all_cases_parallel, style="Accent.TButton").grid(row=0, column=7, padx=2)
         
         dropdown_frame = ttk.Frame(header, style="Header.TFrame")
         dropdown_frame.pack(side="right", padx=4)
@@ -840,18 +957,153 @@ class TestCaseGUI:
 
     def run_all_cases(self):
         def run_all():
+            start_time = time.time()
             results = []
             for name, frame in self.case_frames.items():
                 frame.run()
                 while frame.last_result == "Pending":
                     time.sleep(0.2)
                 results.append(f"{name}: {frame.last_result}")
+            end_time = time.time()
+            total_time = end_time - start_time
+            
             summary = "\n".join(results)
+            summary += f"\n\nTotal execution time: {total_time:.2f}s"
             with open("test_summary.txt", "w") as f:
                 f.write(summary)
-            messagebox.showinfo("Summary Report", f"✅ Completed test cases:\n{summary}\nSaved to test_summary.txt")
+            messagebox.showinfo("Summary Report", f"✅ Completed test cases (Sequential):\n{summary}\nSaved to test_summary.txt")
 
         threading.Thread(target=run_all, daemon=True).start()
+    
+    def run_all_cases_parallel(self):
+        """Run all test cases in parallel for faster execution"""
+        def run_parallel():
+            import concurrent.futures
+            start_time = time.time()
+            results = []
+            
+            def run_single_case(name, frame):
+                frame.run()
+                while frame.last_result == "Pending":
+                    time.sleep(0.2)
+                return f"{name}: {frame.last_result}"
+            
+            with concurrent.futures.ThreadPoolExecutor(max_workers=len(self.case_frames)) as executor:
+                futures = {executor.submit(run_single_case, name, frame): name 
+                          for name, frame in self.case_frames.items()}
+                
+                for future in concurrent.futures.as_completed(futures):
+                    try:
+                        result = future.result()
+                        results.append(result)
+                    except Exception as e:
+                        case_name = futures[future]
+                        results.append(f"{case_name}: ERROR - {e}")
+            
+            end_time = time.time()
+            total_time = end_time - start_time
+            
+            summary = "\n".join(results)
+            summary += f"\n\nTotal execution time (Parallel): {total_time:.2f}s"
+            with open("test_summary_parallel.txt", "w") as f:
+                f.write(summary)
+            messagebox.showinfo("Summary Report", f"✅ Completed test cases (Parallel):\n{summary}\nSaved to test_summary_parallel.txt")
+        
+        threading.Thread(target=run_parallel, daemon=True).start()
+    
+    def export_reports_to_excel(self):
+        """Export test execution reports to Excel"""
+        try:
+            import openpyxl
+            from openpyxl.styles import Font, PatternFill, Alignment
+        except ImportError:
+            messagebox.showerror("Missing Library", "openpyxl is not installed.\nInstall it with: pip install openpyxl")
+            return
+        
+        if not self.case_frames:
+            messagebox.showwarning("No Data", "No test cases to export.")
+            return
+        
+        file = filedialog.asksaveasfilename(
+            defaultextension=".xlsx",
+            filetypes=[("Excel Files", "*.xlsx")],
+            initialfile=f"Test_Report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        )
+        
+        if not file:
+            return
+        
+        wb = openpyxl.Workbook()
+        wb.remove(wb.active)  # Remove default sheet
+        
+        # Create summary sheet
+        summary_sheet = wb.create_sheet("Summary")
+        summary_sheet.append(["Test Case", "Total Steps", "Status", "Execution Time (s)"])
+        
+        # Style headers
+        for cell in summary_sheet[1]:
+            cell.font = Font(bold=True, color="FFFFFF")
+            cell.fill = PatternFill(start_color="3B82F6", end_color="3B82F6", fill_type="solid")
+            cell.alignment = Alignment(horizontal="center")
+        
+        # Add data for each test case
+        for name, frame in self.case_frames.items():
+            total_steps = len(frame.steps)
+            status = getattr(frame, 'last_result', 'Not Run')
+            total_time = sum(getattr(step, 'execution_time', 0) for step in frame.steps)
+            
+            summary_sheet.append([name, total_steps, status, f"{total_time:.2f}"])
+            
+            # Create detailed sheet for each test case
+            sheet = wb.create_sheet(name[:31])  # Excel sheet name limit
+            sheet.append(["Step #", "Name", "Type", "Category", "Condition", "Status", "Time (s)"])
+            
+            # Style headers
+            for cell in sheet[1]:
+                cell.font = Font(bold=True, color="FFFFFF")
+                cell.fill = PatternFill(start_color="10B981", end_color="10B981", fill_type="solid")
+                cell.alignment = Alignment(horizontal="center")
+            
+            # Add step details
+            for i, step in enumerate(frame.steps, 1):
+                step_data = step.get_step_data()
+                status = getattr(step, 'last_result', 'Not Run')
+                exec_time = getattr(step, 'execution_time', 0)
+                
+                row = [
+                    i,
+                    step_data.get('name', f'Step {i}'),
+                    step_data.get('type', 'N/A'),
+                    step_data.get('category', 'General'),
+                    step_data.get('run_condition', 'Always'),
+                    status,
+                    f"{exec_time:.2f}"
+                ]
+                sheet.append(row)
+                
+                # Color code status
+                status_cell = sheet.cell(row=i+1, column=6)
+                if status == "PASS":
+                    status_cell.fill = PatternFill(start_color="D1FAE5", end_color="D1FAE5", fill_type="solid")
+                elif status == "FAIL" or status == "ERROR":
+                    status_cell.fill = PatternFill(start_color="FEE2E2", end_color="FEE2E2", fill_type="solid")
+        
+        # Auto-adjust column widths
+        for sheet in wb.worksheets:
+            for column in sheet.columns:
+                max_length = 0
+                column_letter = column[0].column_letter
+                for cell in column:
+                    try:
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(cell.value)
+                    except:
+                        pass
+                adjusted_width = min(max_length + 2, 50)
+                sheet.column_dimensions[column_letter].width = adjusted_width
+        
+        wb.save(file)
+        messagebox.showinfo("Export Successful", f"Reports exported to:\n{file}")
 
 
 def launch_app():

@@ -13,18 +13,47 @@ class TestStep:
         self.column_entries = []
         self.is_checked = tk.BooleanVar(value=False)
         
-        # Add checkbox at the top of the frame
-        self.checkbox = ttk.Checkbutton(self.frame, text="Select for Copy", variable=self.is_checked, style="Step.TCheckbutton")
-        self.checkbox.grid(row=0, column=1, padx=5, pady=5, sticky='e')
-
-        self.type_dropdown = ttk.Combobox(self.frame, values=[
+        # Conditional execution settings
+        self.run_condition = tk.StringVar(value="Always")
+        self.category = tk.StringVar(value="General")
+        self.execution_time = 0
+        self.last_result = None
+        
+        # Top row with checkbox and controls
+        top_frame = ttk.Frame(self.frame, style="StepInner.TFrame")
+        top_frame.grid(row=0, column=0, columnspan=3, sticky='ew', padx=5, pady=(5, 10))
+        
+        # Add checkbox
+        self.checkbox = ttk.Checkbutton(top_frame, text="Select", variable=self.is_checked, style="Step.TCheckbutton")
+        self.checkbox.pack(side='left', padx=(5, 15))
+        
+        # Add category dropdown with label
+        ttk.Label(top_frame, text="Category:", style="Step.TLabel").pack(side='left', padx=(0, 5))
+        self.category_dropdown = ttk.Combobox(top_frame, textvariable=self.category, 
+                                               values=["General", "Setup", "Validation", "Cleanup", "Critical"],
+                                               width=12, state="readonly", style="Step.TCombobox")
+        self.category_dropdown.pack(side='left', padx=(0, 20))
+        
+        # Add condition dropdown with label
+        ttk.Label(top_frame, text="Run Condition:", style="Step.TLabel").pack(side='left', padx=(0, 5))
+        self.condition_dropdown = ttk.Combobox(top_frame, textvariable=self.run_condition,
+                                                values=["Always", "If Previous Passed", "If Previous Failed", "Skip"],
+                                                width=20, state="readonly", style="Step.TCombobox")
+        self.condition_dropdown.pack(side='left', padx=(0, 5))
+        
+        # Second row with step type dropdown and label
+        type_frame = ttk.Frame(self.frame, style="StepInner.TFrame")
+        type_frame.grid(row=1, column=0, columnspan=3, sticky='ew', padx=5, pady=(0, 5))
+        
+        ttk.Label(type_frame, text="Step Type:", style="Step.TLabel").pack(side='left', padx=(5, 5))
+        self.type_dropdown = ttk.Combobox(type_frame, values=[
             "Copy File", "Check Log File", "Check Database Entry"
-        ], state="readonly", textvariable=self.step_type, style="Step.TCombobox")
-        self.type_dropdown.grid(row=0, column=0, padx=5, pady=5, sticky='w')
+        ], state="readonly", textvariable=self.step_type, style="Step.TCombobox", width=25)
+        self.type_dropdown.pack(side='left', padx=(0, 5))
         self.type_dropdown.bind("<<ComboboxSelected>>", self.show_fields)
 
         self.fields_frame = ttk.Frame(self.frame, style="StepInner.TFrame")
-        self.fields_frame.grid(row=1, column=0, columnspan=2, padx=5, pady=5)
+        self.fields_frame.grid(row=2, column=0, columnspan=3, padx=5, pady=5)
 
     def show_fields(self, event=None):
         for widget in self.fields_frame.winfo_children():
@@ -118,7 +147,13 @@ class TestStep:
         self.column_entries.append((col_name, operator, col_value))
 
     def get_step_data(self):
-        step = {"name": self.step_name, "type": self.step_type.get(), "details": {}}
+        step = {
+            "name": self.step_name, 
+            "type": self.step_type.get(), 
+            "details": {},
+            "run_condition": self.run_condition.get(),
+            "category": self.category.get()
+        }
         for key, widget in self.details.items():
             step["details"][key] = widget.get() if hasattr(widget, "get") else widget
 
