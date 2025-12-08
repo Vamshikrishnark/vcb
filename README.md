@@ -1,30 +1,53 @@
 # Vasu Test Case Builder and Runner
 
-A modern GUI application for building, managing, and executing automated test cases with support for file operations, log validation, and database checks.
+A modern, feature-rich GUI application for building, managing, and executing automated test cases with advanced conditional execution, parallel processing, and comprehensive reporting capabilities.
 
 ## Features
 
+### Core Functionality
 - **Visual Test Case Builder**: Create test cases with multiple steps using an intuitive GUI
 - **Three Step Types**:
-  - **Copy File**: Copy files from source to destination
+  - **Copy File**: Copy files from source to destination with validation
   - **Check Log File**: Search and validate log entries with timestamp filtering
   - **Check Database Entry**: Query SQL Server databases and validate records
-- **Modern UI**: Clean, responsive interface with optimized spacing and auto-hide scrollbar
-- **Test Management**: 
-  - Create, rename, delete, and organize multiple test cases
-  - Copy/paste steps between test cases
-  - Export/import test cases as JSON
-  - Rename individual steps for better organization
-- **Execution & Reporting**:
-  - Run individual test cases or all cases sequentially
-  - Real-time output console with toggle show/hide
-  - Generate HTML and text reports in `TestReports/` folder
-  - Combined test summary report
-- **Advanced Features**:
-  - Step delays for timing control
-  - Log file timestamp parsing with multiple format support
-  - Database queries with multiple column conditions
-  - Search and filter steps within test cases
+- **Modern UI**: Clean, responsive interface with optimized spacing and category-based organization
+
+### Advanced Test Management
+- **Conditional Execution**: 
+  - Run steps based on previous step results
+  - Options: Always, If Previous Passed, If Previous Failed, Skip
+  - Smart step skipping with detailed reporting
+- **Step Categories**: 
+  - Organize steps by type: General, Setup, Validation, Cleanup, Critical
+  - Filter and view steps by category
+  - Visual category indicators in step labels
+- **Flexible Step Selection**:
+  - Checkbox-based multi-step selection
+  - Copy multiple selected steps at once
+  - Select All / Unselect All functionality
+  - Rename steps with custom names
+
+### Execution Options
+- **Sequential Execution**: Run all test cases one after another
+- **Parallel Execution**: Run multiple test cases simultaneously for faster execution
+- **Real-time Monitoring**: Live output console with toggle show/hide
+- **Step-by-Step Tracking**: Monitor execution progress with detailed status updates
+
+### Enhanced Reporting
+- **Performance Metrics**: 
+  - Execution time tracked for each step
+  - Total execution time per test case
+  - Execution summary with statistics
+- **Multiple Report Formats**:
+  - Text logs with timestamps
+  - HTML reports with color-coded results
+  - Excel export with detailed metrics
+  - Combined summary reports
+- **Detailed Statistics**:
+  - Total steps, executed, and skipped counts
+  - Pass/fail rates
+  - Category-wise breakdown
+  - Custom step names in all reports
 
 ## Requirements
 
@@ -71,6 +94,7 @@ Required packages:
 - `python-dotenv~=1.1.0`
 - `ttkbootstrap~=1.13.11`
 - `pyodbc~=5.1.0`
+- `openpyxl~=3.1.2` (for Excel export)
 
 ### 5. Configure Database (Optional)
 
@@ -109,12 +133,13 @@ python autotestgui\version8.py
 
 1. Click **➕ New Case** to create a new test case
 2. Click **➕ Add Step** to add test steps
-3. Select step type from dropdown:
-   - **Copy File**: Choose source and destination files
-   - **Check Log File**: Specify log path, type, search text, and time range
-   - **Check Database Entry**: Configure table, columns, operators, and values
-4. Configure step delays if needed
-5. Click **▶ Run** to execute the test case
+3. Configure each step:
+   - **Category**: Choose from General, Setup, Validation, Cleanup, Critical
+   - **Run Condition**: Set to Always, If Previous Passed, If Previous Failed, or Skip
+   - **Step Type**: Select Copy File, Check Log File, or Check Database Entry
+   - **Step Details**: Configure specific parameters for the step type
+   - **Step Delay**: Add wait time before executing the step (optional)
+4. Click **▶ Run** to execute the test case
 
 ### Managing Test Cases
 
@@ -122,23 +147,48 @@ python autotestgui\version8.py
 - **Delete**: Click **🗑️ Delete** to remove current test case
 - **Export All**: Save all test cases to JSON file
 - **Import All**: Load test cases from JSON file
-- **Run All Cases**: Execute all test cases sequentially
+- **Run All Sequential**: Execute all test cases one after another
+- **Run All Parallel**: Execute all test cases simultaneously (faster)
+- **Export to Excel**: Generate detailed Excel reports with metrics
 
 ### Working with Steps
 
-- **Copy Step**: Select a step (click on it), then click **📋 Copy**
-- **Paste Step**: Click **📋 Paste** to paste copied steps
-- **Delete Step**: Select step, click **🗑 Delete**
-- **Rename Step**: Select step, click **✏ Rename Step**
+- **Select Steps**: Check the "Select" checkbox on steps you want to copy
+- **Copy Checked**: Click **📋 Copy Checked** to copy selected steps
+- **Paste Steps**: Click **📋 Paste** to paste copied steps
+- **Delete Step**: Select a step (click on it), then click **🗑 Delete**
+- **Rename Step**: Select step, click **✏ Rename Step** for custom names
+- **Select All**: Click **☑ Select All** to check all step checkboxes
+- **Unselect All**: Click **☐ Unselect All** to uncheck all checkboxes
+- **Filter by Category**: Use category filter buttons (All, Setup, Validation, Cleanup, Critical)
 - **Search Steps**: Use search bar to filter steps by type
 - **Toggle Output**: Click **📊 Show Output** to view execution logs
 
+### Understanding Conditional Execution
+
+Steps can be configured to run conditionally:
+- **Always**: Step always executes (default)
+- **If Previous Passed**: Only runs if the previous step succeeded
+- **If Previous Failed**: Only runs if the previous step failed
+- **Skip**: Step is skipped entirely
+
+This allows you to create dynamic test flows that adapt based on results.
+
 ### Reports
 
-After execution, reports are saved in `TestReports/`:
-- `log_TestCaseName.txt` - Detailed execution log
-- `report_TestCaseName.html` - HTML report for individual test case
+After execution, reports are automatically generated in `TestReports/`:
+- `log_TestCaseName.txt` - Detailed execution log with timestamps
+- `report_TestCaseName.html` - Color-coded HTML report with execution summary
 - `Combined_Test_Summary.html` - Summary of all test runs
+- `test_summary.txt` - Sequential execution summary
+- `test_summary_parallel.txt` - Parallel execution summary
+
+**Excel Reports** (via Export button):
+- Summary sheet with all test cases
+- Individual sheets per test case
+- Detailed step information with categories, conditions, and execution times
+- Color-coded pass/fail status
+- Performance metrics and statistics
 
 ## Project Structure
 

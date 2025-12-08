@@ -181,7 +181,9 @@ class TestCaseFrame:
     def select_step(self, index):
         # Toggle selection: if clicking the same step, unselect it
         if self.selected_step_index == index:
-            self.unselect_step()
+            self.selected_step_index = None
+            for step in self.steps:
+                step.frame.config(style="Step.TLabelframe")
         else:
             self.selected_step_index = index
             for i, step in enumerate(self.steps):
@@ -289,7 +291,8 @@ class TestCaseFrame:
         new_name = simpledialog.askstring("Rename Step", f"Enter new name for Step {self.selected_step_index + 1}:", initialvalue=step.step_name)
         if new_name:
             step.step_name = new_name
-            step.frame.config(text=new_name)
+            category = step.category.get()
+            step.frame.config(text=f"{new_name} [{category}]")
 
     def rename_test_case(self):
         new_name = simpledialog.askstring("Rename Test Case", "Enter new test case name:", initialvalue=self.name)
@@ -406,7 +409,8 @@ class TestCaseFrame:
                         skip_reason = "Previous step had no result"
                     
                     if not should_run:
-                        msg = f"⏭ Step {i} [{category}]: SKIPPED - {skip_reason}"
+                        step_name = step_data.get('name', f'Step {i}')
+                        msg = f"⏭ Step {i}: {step_name} [{category}]: SKIPPED - {skip_reason}"
                         self.output.insert(tk.END, msg + "\n")
                         log_lines.append(f"[{datetime.now()}] {msg}")
                         html_report.append(f"<li style='color: #888;'>{msg}</li>")
@@ -424,23 +428,37 @@ class TestCaseFrame:
                         time.sleep(delay)
                         log_lines.append(f"[{datetime.now()}] {msg}")
 
-                    msg = f"➡ Step {i} [{category}]: {step_data['type']}"
+                    step_name = step_data.get('name', f'Step {i}')
+                    msg = f"➡ Step {i}: {step_name} [{category}]: {step_data['type']}"
                     self.output.insert(tk.END, msg + "\n")
                     details = step_data["details"]
                     log_lines.append(f"[{datetime.now()}] {msg}")
                     passed = True
 
                     if step_data["type"] == "Copy File":
-                        for src in details.get("from_files", []):
-                            dest = details.get("to")
-                            if os.path.isfile(src):
-                                shutil.copy(src, dest)
-                                msg = f"✅ Copied '{src}' to '{dest}'"
-                            else:
-                                msg = f"❌ Source file not found: {src}"
-                                passed = False
+                        from_files = details.get("from_files", [])
+                        dest = details.get("to", "")
+                        
+                        if not from_files:
+                            msg = f"❌ No source files specified"
+                            passed = False
                             self.output.insert(tk.END, msg + "\n")
                             log_lines.append(f"[{datetime.now()}] {msg}")
+                        elif not dest:
+                            msg = f"❌ No destination path specified"
+                            passed = False
+                            self.output.insert(tk.END, msg + "\n")
+                            log_lines.append(f"[{datetime.now()}] {msg}")
+                        else:
+                            for src in from_files:
+                                if os.path.isfile(src):
+                                    shutil.copy(src, dest)
+                                    msg = f"✅ Copied '{src}' to '{dest}'"
+                                else:
+                                    msg = f"❌ Source file not found: {src}"
+                                    passed = False
+                                self.output.insert(tk.END, msg + "\n")
+                                log_lines.append(f"[{datetime.now()}] {msg}")
 
 
 
@@ -582,7 +600,7 @@ class TestCaseFrame:
                     step.last_result = "PASS" if passed else "FAIL"
                     previous_step_passed = passed
                     
-                    result_msg = f"{'✔️' if passed else '❌'} Step {i} [{category}] {'passed' if passed else 'failed'} ({step_execution_time:.2f}s)"
+                    result_msg = f"{'✔️' if passed else '❌'} Step {i}: {step_name} [{category}] {'passed' if passed else 'failed'} ({step_execution_time:.2f}s)"
                     self.output.insert(tk.END, result_msg + "\n")
                     
                     # Enhanced HTML reporting with color coding
@@ -600,8 +618,9 @@ class TestCaseFrame:
                     step.last_result = "ERROR"
                     previous_step_passed = False
                     executed_steps += 1
+                    step_name = step.get_step_data().get('name', f'Step {i}')
                     
-                    msg = f"❌ Error in step {i}: {e} ({step_execution_time:.2f}s)"
+                    msg = f"❌ Error in Step {i}: {step_name}: {e} ({step_execution_time:.2f}s)"
                     self.output.insert(tk.END, msg + "\n")
                     html_report.append(f"<li style='color: #ef4444;'>{msg}</li>")
                     log_lines.append(f"[{datetime.now()}] {msg}")
