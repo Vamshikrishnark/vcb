@@ -11,15 +11,20 @@ class TestStep:
         self.step_type = tk.StringVar()
         self.details = {}
         self.column_entries = []
+        self.is_checked = tk.BooleanVar(value=False)
+        
+        # Add checkbox at the top of the frame
+        self.checkbox = ttk.Checkbutton(self.frame, text="Select for Copy", variable=self.is_checked, style="Step.TCheckbutton")
+        self.checkbox.grid(row=0, column=1, padx=5, pady=5, sticky='e')
 
         self.type_dropdown = ttk.Combobox(self.frame, values=[
             "Copy File", "Check Log File", "Check Database Entry"
         ], state="readonly", textvariable=self.step_type, style="Step.TCombobox")
-        self.type_dropdown.grid(row=0, column=0, padx=5, pady=5)
+        self.type_dropdown.grid(row=0, column=0, padx=5, pady=5, sticky='w')
         self.type_dropdown.bind("<<ComboboxSelected>>", self.show_fields)
 
         self.fields_frame = ttk.Frame(self.frame, style="StepInner.TFrame")
-        self.fields_frame.grid(row=1, column=0, padx=5, pady=5)
+        self.fields_frame.grid(row=1, column=0, columnspan=2, padx=5, pady=5)
 
     def show_fields(self, event=None):
         for widget in self.fields_frame.winfo_children():

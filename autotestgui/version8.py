@@ -52,12 +52,14 @@ class TestCaseFrame:
         ttk.Button(btns, text="➕ Add Step", command=self.add_step, style="Accent.TButton").grid(row=0, column=0, padx=2)
         ttk.Button(btns, text="🗑 Clear", command=self.clear_steps, style="Ghost.TButton").grid(row=0, column=1, padx=2)
         ttk.Button(btns, text="▶ Run", command=self.run, style="Accent.TButton").grid(row=0, column=2, padx=2)
-        ttk.Button(btns, text="📋 Copy", command=self.copy_selected_step, style="Ghost.TButton").grid(row=0, column=3, padx=2)
+        ttk.Button(btns, text="📋 Copy Checked", command=self.copy_checked_steps, style="Ghost.TButton").grid(row=0, column=3, padx=2)
         ttk.Button(btns, text="🗑 Delete", command=self.delete_selected_step, style="Danger.TButton").grid(row=0, column=4, padx=2)
         ttk.Button(btns, text="📋 Paste", command=self.paste_step_from_clipboard, style="Ghost.TButton").grid(row=0, column=5, padx=2)
         ttk.Button(btns, text="✏ Rename Step", command=self.rename_selected_step, style="Ghost.TButton").grid(row=0, column=6, padx=2)
+        ttk.Button(btns, text="☑ Select All", command=self.select_all_steps, style="Ghost.TButton").grid(row=0, column=7, padx=2)
+        ttk.Button(btns, text="☐ Unselect All", command=self.unselect_all_steps, style="Ghost.TButton").grid(row=0, column=8, padx=2)
         self.toggle_output_btn = ttk.Button(btns, text="📊 Show Output", command=self.toggle_output, style="Ghost.TButton")
-        self.toggle_output_btn.grid(row=0, column=7, padx=2)
+        self.toggle_output_btn.grid(row=0, column=9, padx=2)
 
         # Search bar
         self.search_var = tk.StringVar()
@@ -147,19 +149,46 @@ class TestCaseFrame:
         self.steps.append(step)
 
     def select_step(self, index):
-        self.selected_step_index = index
-        for i, step in enumerate(self.steps):
-            step.frame.config(style="StepSelected.TLabelframe" if i == index else "Step.TLabelframe")
-
-    def copy_selected_step(self):
+        # Toggle selection: if clicking the same step, unselect it
+        if self.selected_step_index == index:
+            self.unselect_step()
+        else:
+            self.selected_step_index = index
+            for i, step in enumerate(self.steps):
+                step.frame.config(style="StepSelected.TLabelframe" if i == index else "Step.TLabelframe")
+    
+    def copy_checked_steps(self):
         global clipboard_step_data
-        if self.selected_step_index is None:
-            messagebox.showwarning("Copy Step", "No step selected.")
-            return
         clipboard_step_data = []
-        for idx in range(self.selected_step_index, len(self.steps)):
-            clipboard_step_data.append(self.steps[idx].get_step_data())
-        messagebox.showinfo("Steps Copied", f"{len(clipboard_step_data)} step(s) copied to clipboard.")
+        step_names = []
+        
+        for idx, step in enumerate(self.steps):
+            if step.is_checked.get():
+                clipboard_step_data.append(step.get_step_data())
+                step_name = step.get_step_data().get("name", f"Step {idx + 1}")
+                step_names.append(f"  • {step_name}")
+        
+        if not clipboard_step_data:
+            messagebox.showwarning("Copy Steps", "No steps are checked. Please check the steps you want to copy.")
+            return
+        
+        # Create a detailed message showing which steps were copied
+        if len(step_names) == 1:
+            message = f"1 step copied to clipboard:\n\n{step_names[0]}"
+        else:
+            message = f"{len(step_names)} steps copied to clipboard:\n\n" + "\n".join(step_names)
+        
+        messagebox.showinfo("Steps Copied", message)
+    
+    def select_all_steps(self):
+        """Check all step checkboxes"""
+        for step in self.steps:
+            step.is_checked.set(True)
+    
+    def unselect_all_steps(self):
+        """Uncheck all step checkboxes"""
+        for step in self.steps:
+            step.is_checked.set(False)
 
     def paste_step_from_clipboard(self):
         global clipboard_step_data
