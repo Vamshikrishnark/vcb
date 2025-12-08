@@ -1,0 +1,6 @@
+{
+  "server": "localhost:5432",
+  "database": "testdb",
+  "username": "postgres",
+  "password": "root"
+}

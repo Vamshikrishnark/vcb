@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="7f90af35-aa8e-4ffd-985e-b49c9e192702" name="Changes" comment="" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
+  </component>
+  <component name="FormatOnSaveOptions">
+    <option name="myRunOnSave" value="true" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 0
+}</component>
+  <component name="ProjectId" id="2yem6A4YEl51DnjCUXYPk4DUbHt" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "PowerShell.cleanup_keep_version8.ps1.executor": "Run",
+    "Python.Test.executor": "Run",
+    "Python.TestCaseFrame.executor": "Run",
+    "Python.Vasutestexecutioner.executor": "Run",
+    "Python.__init__.executor": "Run",
+    "Python.main.executor": "Run",
+    "Python.maingui.executor": "Run",
+    "Python.maintest.executor": "Run",
+    "Python.mulimain.executor": "Run",
+    "Python.multiptest.executor": "Run",
+    "Python.test label.executor": "Run",
+    "Python.test_step.executor": "Run",
+    "Python.testgrid.executor": "Run",
+    "Python.version1.executor": "Run",
+    "Python.version2.executor": "Run",
+    "Python.version3.executor": "Run",
+    "Python.version4.executor": "Run",
+    "Python.version5.executor": "Run",
+    "Python.version6.executor": "Run",
+    "Python.version7.executor": "Run",
+    "Python.version8.executor": "Run",
+    "Python.version9.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager": "true",
+    "last_opened_file_path": "C:/Users/krishv/Downloads/test_case_manager_real/autotestgui",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "preferences.pluginManager",
+    "vue.rearranger.settings.migration": "true"
+  }
+}]]></component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\krishv\Downloads\test_case_manager_real\autotestgui" />
+      <recent name="C:\Users\krishv\Downloads\test_case_manager_real" />
+    </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\krishv\Downloads\test_case_manager_real\Learntk" />
+    </key>
+  </component>
+  <component name="RunManager">
+    <configuration name="cleanup_keep_version8.ps1" type="PowerShellRunType" factoryName="PowerShell" temporary="true" scriptUrl="$PROJECT_DIR$/cleanup_keep_version8.ps1" executablePath="$PROJECT_DIR$/../../../../WINDOWS/System32/WindowsPowerShell/v1.0/powershell.exe">
+      <envs />
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="PowerShell.cleanup_keep_version8.ps1" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-python-sdk-9f8e2b94138c-36ea0e71a18c-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-251.26094.141" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="7f90af35-aa8e-4ffd-985e-b49c9e192702" name="Changes" comment="" />
+      <created>1750203235988</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1750203235988</updated>
+      <workItem from="1750203237210" duration="1774000" />
+      <workItem from="1750206311679" duration="4962000" />
+      <workItem from="1750236449749" duration="11387000" />
+      <workItem from="1750308633844" duration="36379000" />
+      <workItem from="1750653291208" duration="18110000" />
+      <workItem from="1750933268754" duration="19476000" />
+      <workItem from="1751266748033" duration="2589000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/test_case_manager_real$mulimain.coverage" NAME="mulimain Coverage Results" MODIFIED="1750346862173" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/autotestgui" />
+    <SUITE FILE_PATH="coverage/test_case_manager_real$multiptest.coverage" NAME="multiptest Coverage Results" MODIFIED="1750345591425" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/autotestgui" />
+    <SUITE FILE_PATH="coverage/test_case_manager_real$version3.coverage" NAME="version3 Coverage Results" MODIFIED="1750354401775" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/autotestgui" />
+    <SUITE FILE_PATH="coverage/test_case_manager_real$testgrid.coverage" NAME="testgrid Coverage Results" MODIFIED="1750397303556" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/autotestgui" />
+    <SUITE FILE_PATH="coverage/test_case_manager_real$TestCaseFrame.coverage" NAME="TestCaseFrame Coverage Results" MODIFIED="1750347348265" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/autotestgui" />
+    <SUITE FILE_PATH="coverage/test_case_manager_real$Test.coverage" NAME="Test Coverage Results" MODIFIED="1750241651792" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/autotestgui" />
+    <SUITE FILE_PATH="coverage/test_case_manager_real$__init__.coverage" NAME="__init__ Coverage Results" MODIFIED="1750396206200" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$USER_HOME$/AppData/Local/Programs/Python/Python313/Lib/tkinter" />
+    <SUITE FILE_PATH="coverage/test_case_manager_real$version4.coverage" NAME="version4 Coverage Results" MODIFIED="1750356936973" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/autotestgui" />
+    <SUITE FILE_PATH="coverage/test_case_manager_real$version7.coverage" NAME="version7 Coverage Results" MODIFIED="1750953836577" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/autotestgui" />
+    <SUITE FILE_PATH="coverage/test_case_manager_real$version8.coverage" NAME="version8 Coverage Results" MODIFIED="1751302650351" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/autotestgui" />
+    <SUITE FILE_PATH="coverage/test_case_manager_real$version2.coverage" NAME="version2 Coverage Results" MODIFIED="1750353907798" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/autotestgui" />
+    <SUITE FILE_PATH="coverage/test_case_manager_real$maintest.coverage" NAME="maintest Coverage Results" MODIFIED="1750222276650" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/Learntk" />
+    <SUITE FILE_PATH="coverage/test_case_manager_real$test_step.coverage" NAME="test_step Coverage Results" MODIFIED="1750403961445" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/autotestgui" />
+    <SUITE FILE_PATH="coverage/test_case_manager_real$version5.coverage" NAME="version5 Coverage Results" MODIFIED="1750413467957" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/autotestgui" />
+    <SUITE FILE_PATH="coverage/test_case_manager_real$maingui.coverage" NAME="maingui Coverage Results" MODIFIED="1750345951444" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/autotestgui" />
+    <SUITE FILE_PATH="coverage/test_case_manager_real$version1.coverage" NAME="version1 Coverage Results" MODIFIED="1750767409033" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/autotestgui" />
+    <SUITE FILE_PATH="coverage/test_case_manager_real$version9.coverage" NAME="version9 Coverage Results" MODIFIED="1751010336486" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/autotestgui" />
+    <SUITE FILE_PATH="coverage/test_case_manager_real$version6.coverage" NAME="version6 Coverage Results" MODIFIED="1750684318328" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/autotestgui" />
+    <SUITE FILE_PATH="coverage/test_case_manager_real$main.coverage" NAME="main Coverage Results" MODIFIED="1750204359528" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/test_case_manager_real$test_label.coverage" NAME="test label Coverage Results" MODIFIED="1750398548961" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/autotestgui" />
+    <SUITE FILE_PATH="coverage/test_case_manager_real$Vasutestexecutioner.coverage" NAME="Vasutestexecutioner Coverage Results" MODIFIED="1751013299769" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/autotestgui" />
+  </component>
+  <component name="github-copilot-workspace">
+    <instructionFileLocations>
+      <option value=".github/instructions" />
+    </instructionFileLocations>
+    <promptFileLocations>
+      <option value=".github/prompts" />
+    </promptFileLocations>
+  </component>
+</project>
