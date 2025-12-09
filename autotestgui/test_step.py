@@ -206,7 +206,15 @@ class TestStep:
             "target_step": self.target_step.get()
         }
         for key, widget in self.details.items():
-            step["details"][key] = widget.get() if hasattr(widget, "get") else widget
+            # Handle different widget types properly
+            if hasattr(widget, "get"):
+                # Text widgets need get("1.0", "end-1c"), Entry widgets just need get()
+                if isinstance(widget, tk.Text):
+                    step["details"][key] = widget.get("1.0", "end-1c")
+                else:
+                    step["details"][key] = widget.get()
+            else:
+                step["details"][key] = widget
 
         if self.step_type.get() == "Copy File":
             step["details"]["from_files"] = self.details.get("from_files", [])
