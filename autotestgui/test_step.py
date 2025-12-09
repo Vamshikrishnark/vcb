@@ -16,6 +16,7 @@ class TestStep:
         # Conditional execution settings
         self.run_condition = tk.StringVar(value="Always")
         self.category = tk.StringVar(value="General")
+        self.target_step = tk.StringVar(value="")
         self.execution_time = 0
         self.last_result = None
         
@@ -36,10 +37,18 @@ class TestStep:
         
         # Add condition dropdown with label
         ttk.Label(top_frame, text="Run Condition:", style="Step.TLabel").pack(side='left', padx=(0, 5))
+        from condition_handler import ConditionHandler
         self.condition_dropdown = ttk.Combobox(top_frame, textvariable=self.run_condition,
-                                                values=["Always", "If Previous Passed", "If Previous Failed", "Skip"],
-                                                width=20, state="readonly", style="Step.TCombobox")
+                                                values=ConditionHandler.CONDITIONS,
+                                                width=25, state="readonly", style="Step.TCombobox")
         self.condition_dropdown.pack(side='left', padx=(0, 5))
+        self.condition_dropdown.bind("<<ComboboxSelected>>", self.on_condition_change)
+        
+        # Add target step entry (initially hidden)
+        ttk.Label(top_frame, text="Target Step #:", style="Step.TLabel").pack(side='left', padx=(0, 5))
+        self.target_step_entry = ttk.Entry(top_frame, textvariable=self.target_step, width=5)
+        self.target_step_entry.pack(side='left', padx=(0, 5))
+        self.target_step_entry.pack_forget()  # Hide initially
         
         # Second row with step type dropdown and label
         type_frame = ttk.Frame(self.frame, style="StepInner.TFrame")
@@ -146,13 +155,22 @@ class TestStep:
 
         self.column_entries.append((col_name, operator, col_value))
 
+    def on_condition_change(self, event=None):
+        """Show/hide target step entry based on condition"""
+        condition = self.run_condition.get()
+        if condition in ["If Specific Step Passed", "If Specific Step Failed"]:
+            self.target_step_entry.pack(side='left', padx=(0, 5))
+        else:
+            self.target_step_entry.pack_forget()
+    
     def get_step_data(self):
         step = {
             "name": self.step_name, 
             "type": self.step_type.get(), 
             "details": {},
             "run_condition": self.run_condition.get(),
-            "category": self.category.get()
+            "category": self.category.get(),
+            "target_step": self.target_step.get()
         }
         for key, widget in self.details.items():
             step["details"][key] = widget.get() if hasattr(widget, "get") else widget

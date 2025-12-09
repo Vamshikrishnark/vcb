@@ -7,6 +7,7 @@ import os
 import re
 from datetime import datetime
 from test_step import TestStep
+from condition_handler import ConditionHandler
 
 REPORT_OUTPUT_FOLDER = "TestReports"
 os.makedirs(REPORT_OUTPUT_FOLDER, exist_ok=True)
@@ -17,22 +18,354 @@ clipboard_step_data = []  # Now supports multiple steps
 def save_combined_html():
     if not combined_report_data:
         return
-    combined_html = """<html><head>
-    <title>Test Summary</title>
+    
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    version_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    
+    # Parse all test case data to generate aggregate statistics
+    total_test_cases = len(combined_report_data)
+    total_passed_cases = 0
+    total_failed_cases = 0
+    total_steps_all = 0
+    total_passed_steps = 0
+    total_failed_steps = 0
+    total_execution_time = 0.0
+    
+    test_case_summaries = []  # Store compact summaries for quick access table
+    
+    # Parse HTML to extract statistics (simple regex-based extraction)
+    import re
+    for report_html in combined_report_data:
+        # Extract test case name
+        name_match = re.search(r'Feature: ([^<]+)', report_html)
+        test_name = name_match.group(1) if name_match else "Unknown"
+        
+        # Determine pass/fail from banner color
+        is_passed = '#5cb85c' in report_html.split('cucumber-banner')[1].split('</div>')[0] if 'cucumber-banner' in report_html else False
+        if is_passed:
+            total_passed_cases += 1
+        else:
+            total_failed_cases += 1
+        
+        # Extract step counts - improved regex to handle various whitespace/formatting
+        passed_match = re.search(r'(\d+)</div>\s*<div[^>]*>Passed</div>', report_html)
+        failed_match = re.search(r'(\d+)</div>\s*<div[^>]*>Failed</div>', report_html)
+        total_match = re.search(r'(\d+)</div>\s*<div[^>]*>Total</div>', report_html)
+        
+        passed_steps = int(passed_match.group(1)) if passed_match else 0
+        failed_steps = int(failed_match.group(1)) if failed_match else 0
+        total_steps = int(total_match.group(1)) if total_match else 0
+        
+        total_passed_steps += passed_steps
+        total_failed_steps += failed_steps
+        total_steps_all += total_steps
+        
+        # Extract execution time
+        time_match = re.search(r'Total Duration</div>\s*<div[^>]*>([\d.]+)s</div>', report_html)
+        exec_time = float(time_match.group(1)) if time_match else 0.0
+        total_execution_time += exec_time
+        
+        # Store summary for table
+        test_case_summaries.append({
+            'name': test_name,
+            'status': 'PASS' if is_passed else 'FAIL',
+            'passed': passed_steps,
+            'failed': failed_steps,
+            'total': total_steps,
+            'time': exec_time
+        })
+    
+    # Calculate overall success rate
+    overall_success_rate = (total_passed_steps / total_steps_all * 100) if total_steps_all > 0 else 0
+    case_success_rate = (total_passed_cases / total_test_cases * 100) if total_test_cases > 0 else 0
+    
+    combined_html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Execution Dashboard - v{version_timestamp}</title>
     <style>
-        body { font-family: Arial; padding: 20px; }
-        h2 { color: #003366; }
-        li { margin-bottom: 6px; }
+        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+        body {{ 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            line-height: 1.6;
+            color: #1e293b;
+        }}
+        .container {{ max-width: 1600px; margin: 0 auto; }}
+        .dashboard-header {{ 
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }}
+        .dashboard-header h1 {{ 
+            font-size: 36px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+            font-weight: 800;
+        }}
+        .stats-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 25px 0;
+        }}
+        .stat-card {{
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }}
+        .stat-card:hover {{ transform: translateY(-4px); box-shadow: 0 6px 20px rgba(0,0,0,0.15); }}
+        .stat-value {{ font-size: 42px; font-weight: 700; margin: 10px 0; }}
+        .stat-label {{ font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: #64748b; font-weight: 600; }}
+        .chart-section {{
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }}
+        .progress-bar {{
+            display: flex;
+            height: 50px;
+            border-radius: 25px;
+            overflow: hidden;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }}
+        .progress-segment {{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 18px;
+            transition: all 0.3s;
+        }}
+        .summary-table {{
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }}
+        .summary-table thead {{
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }}
+        .summary-table th {{
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 1px;
+        }}
+        .summary-table td {{
+            padding: 12px 15px;
+            border-bottom: 1px solid #e5e7eb;
+        }}
+        .summary-table tbody tr:hover {{ background: #f8fafc; }}
+        .badge {{ 
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+        }}
+        .badge-pass {{ background: #d1fae5; color: #065f46; }}
+        .badge-fail {{ background: #fee2e2; color: #991b1b; }}
+        .compact-test {{ 
+            background: white;
+            border-radius: 8px;
+            padding: 15px 20px;
+            margin: 15px 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border-left: 4px solid #3b82f6;
+        }}
+        .compact-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }}
+        .compact-header:hover {{ opacity: 0.8; }}
+        .details {{ display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #e5e7eb; }}
+        .details.expanded {{ display: block; }}
+        @media print {{ body {{ background: white; }} }}
     </style>
-    </head><body><h1>Combined Test Summary</h1><hr>"""
-    combined_html += "<hr>".join(combined_report_data)
-    combined_html += "</body></html>"
+    <script>
+        function toggleDetails(id) {{
+            const details = document.getElementById('details-' + id);
+            const arrow = document.getElementById('arrow-' + id);
+            if (details.classList.contains('expanded')) {{
+                details.classList.remove('expanded');
+                arrow.textContent = '▼';
+            }} else {{
+                details.classList.add('expanded');
+                arrow.textContent = '▲';
+            }}
+        }}
+    </script>
+</head>
+<body>
+    <div class="container">
+        <div class="dashboard-header">
+            <h1>🧪 Test Execution Dashboard</h1>
+            <p style='color: #64748b; font-size: 15px; margin-top: 5px;'>Comprehensive overview of all test executions</p>
+            <p style='color: #94a3b8; font-size: 13px; margin-top: 8px;'>📅 {timestamp} | 🔖 Version: {version_timestamp}</p>
+        </div>
 
-    filename = os.path.join(REPORT_OUTPUT_FOLDER, "Combined_Test_Summary.html")
-    with open(filename, "w", encoding="utf-8") as f:
+        <!-- Aggregate Statistics -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Test Cases</div>
+                <div class="stat-value" style="color: #3b82f6;">{total_test_cases}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Passed Cases</div>
+                <div class="stat-value" style="color: #10b981;">{total_passed_cases}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Failed Cases</div>
+                <div class="stat-value" style="color: #ef4444;">{total_failed_cases}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total Steps</div>
+                <div class="stat-value" style="color: #8b5cf6;">{total_steps_all}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Success Rate</div>
+                <div class="stat-value" style="color: {'#10b981' if overall_success_rate >= 80 else '#f59e0b' if overall_success_rate >= 50 else '#ef4444'};">{overall_success_rate:.1f}%</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total Time</div>
+                <div class="stat-value" style="color: #06b6d4;">{total_execution_time:.1f}s</div>
+            </div>
+        </div>
+
+        <!-- Visual Progress Chart -->
+        <div class="chart-section">
+            <h2 style="margin-bottom: 20px; font-size: 22px; color: #1e293b;">📊 Overall Test Execution</h2>
+            <div class="progress-bar">
+                <div class="progress-segment" style="flex: {total_passed_steps}; background: linear-gradient(135deg, #10b981, #059669);">
+                    {total_passed_steps if total_passed_steps > 0 else ''}
+                </div>
+                <div class="progress-segment" style="flex: {total_failed_steps}; background: linear-gradient(135deg, #ef4444, #dc2626);">
+                    {total_failed_steps if total_failed_steps > 0 else ''}
+                </div>
+            </div>
+            <div style="display: flex; justify-content: space-around; margin-top: 15px; font-size: 14px; color: #64748b;">
+                <span><strong style="color: #10b981;">✓ {total_passed_steps}</strong> Passed</span>
+                <span><strong style="color: #ef4444;">✗ {total_failed_steps}</strong> Failed</span>
+                <span><strong style="color: #3b82f6;">Total: {total_steps_all}</strong></span>
+            </div>
+        </div>
+
+        <!-- Quick Summary Table -->
+        <div class="chart-section">
+            <h2 style="margin-bottom: 20px; font-size: 22px; color: #1e293b;">📋 Test Cases Summary</h2>
+            <table class="summary-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Test Case Name</th>
+                        <th style="text-align: center;">Status</th>
+                        <th style="text-align: center;">Passed</th>
+                        <th style="text-align: center;">Failed</th>
+                        <th style="text-align: center;">Total</th>
+                        <th style="text-align: center;">Duration</th>
+                        <th style="text-align: center;">Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+"""
+    
+    # Add summary table rows
+    for idx, summary in enumerate(test_case_summaries, 1):
+        badge_class = 'badge-pass' if summary['status'] == 'PASS' else 'badge-fail'
+        combined_html += f"""
+                    <tr>
+                        <td><strong>#{idx}</strong></td>
+                        <td>{summary['name']}</td>
+                        <td style="text-align: center;"><span class="badge {badge_class}">{summary['status']}</span></td>
+                        <td style="text-align: center; color: #10b981; font-weight: 600;">{summary['passed']}</td>
+                        <td style="text-align: center; color: #ef4444; font-weight: 600;">{summary['failed']}</td>
+                        <td style="text-align: center; font-weight: 600;">{summary['total']}</td>
+                        <td style="text-align: center;">{summary['time']:.2f}s</td>
+                        <td style="text-align: center;"><a href="#test-{idx}" style="color: #3b82f6; text-decoration: none; font-weight: 600;">View ↓</a></td>
+                    </tr>
+"""
+    
+    combined_html += """
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Detailed Test Cases (Compact, Expandable) -->
+        <div class="chart-section">
+            <h2 style="margin-bottom: 20px; font-size: 22px; color: #1e293b;">📝 Detailed Test Results</h2>
+"""
+    
+    # Add compact test case sections
+    for idx, report_data in enumerate(combined_report_data, 1):
+        summary = test_case_summaries[idx - 1]
+        status_icon = '✓' if summary['status'] == 'PASS' else '✗'
+        status_color = '#10b981' if summary['status'] == 'PASS' else '#ef4444'
+        
+        combined_html += f"""
+            <div class="compact-test" id="test-{idx}">
+                <div class="compact-header" onclick="toggleDetails({idx})">
+                    <div>
+                        <span style="font-size: 20px; margin-right: 10px;">{status_icon}</span>
+                        <strong style="font-size: 16px; color: {status_color};">#{idx}. {summary['name']}</strong>
+                        <span style="margin-left: 15px; color: #64748b; font-size: 14px;">
+                            {summary['passed']} passed, {summary['failed']} failed • {summary['time']:.2f}s
+                        </span>
+                    </div>
+                    <span id="arrow-{idx}" style="font-size: 14px; color: #64748b;">▼</span>
+                </div>
+                <div id="details-{idx}" class="details">
+                    {report_data}
+                </div>
+            </div>
+"""
+    
+    combined_html += """
+        </div>
+    </div>
+</body>
+</html>
+"""
+
+    # Delete old combined reports to keep only the latest
+    import glob
+    old_reports = glob.glob(os.path.join(REPORT_OUTPUT_FOLDER, "Combined_Test_Summary_*.html"))
+    for old_report in old_reports:
+        try:
+            os.remove(old_report)
+        except:
+            pass
+    
+    # Save only the latest combined report
+    latest_filename = os.path.join(REPORT_OUTPUT_FOLDER, "Combined_Test_Summary_Latest.html")
+    
+    with open(latest_filename, "w", encoding="utf-8") as f:
         f.write(combined_html)
 
-    messagebox.showinfo("Report Saved", f"Combined report saved at:\n{filename}")
+    print(f"✅ Combined report generated: Combined_Test_Summary_Latest.html")
 
 class TestCaseFrame:
     def __init__(self, parent, name):
@@ -59,28 +392,34 @@ class TestCaseFrame:
         ttk.Button(btns, text="☑ Select All", command=self.select_all_steps, style="Ghost.TButton").grid(row=0, column=7, padx=2)
         ttk.Button(btns, text="☐ Unselect All", command=self.unselect_all_steps, style="Ghost.TButton").grid(row=0, column=8, padx=2)
         
-        # Second row for category filtering
-        btns2 = ttk.Frame(self.frame, style="CaseInner.TFrame")
-        btns2.pack(pady=(0, 10), padx=12)
+        # Filter bar with dropdowns
+        filter_frame = ttk.Frame(self.frame, style="CaseInner.TFrame")
+        filter_frame.pack(fill="x", padx=12, pady=(0, 10))
         
-        ttk.Label(btns2, text="Filter by Category:", style="Case.TLabelframe.Label").grid(row=0, column=0, padx=2)
-        ttk.Button(btns2, text="All", command=lambda: self.filter_by_category(None), style="Ghost.TButton").grid(row=0, column=1, padx=2)
-        ttk.Button(btns2, text="Setup", command=lambda: self.filter_by_category("Setup"), style="Ghost.TButton").grid(row=0, column=2, padx=2)
-        ttk.Button(btns2, text="Validation", command=lambda: self.filter_by_category("Validation"), style="Ghost.TButton").grid(row=0, column=3, padx=2)
-        ttk.Button(btns2, text="Cleanup", command=lambda: self.filter_by_category("Cleanup"), style="Ghost.TButton").grid(row=0, column=4, padx=2)
-        ttk.Button(btns2, text="Critical", command=lambda: self.filter_by_category("Critical"), style="Ghost.TButton").grid(row=0, column=5, padx=2)
+        # Category filter dropdown
+        ttk.Label(filter_frame, text="Category:", style="Case.TLabelframe.Label").pack(side='left', padx=(0, 5))
+        self.category_filter_var = tk.StringVar(value="All")
+        self.category_filter = ttk.Combobox(filter_frame, textvariable=self.category_filter_var,
+                                            values=["All", "General", "Setup", "Validation", "Cleanup", "Critical"],
+                                            width=12, state="readonly", style="Step.TCombobox")
+        self.category_filter.pack(side='left', padx=(0, 15))
+        self.category_filter.bind("<<ComboboxSelected>>", lambda e: self.apply_filters())
         
-        self.toggle_output_btn = ttk.Button(btns2, text="📊 Show Output", command=self.toggle_output, style="Ghost.TButton")
-        self.toggle_output_btn.grid(row=0, column=6, padx=2)
-
-        # Search bar
-        self.search_var = tk.StringVar()
-        search_frame = ttk.Frame(self.frame, style="CaseInner.TFrame")
-        search_frame.pack(fill="x", padx=8, pady=(0, 6))
-        search_entry = ttk.Entry(search_frame, textvariable=self.search_var, style="Search.TEntry")
-        search_entry.pack(side="left", expand=True, fill="x")
-        ttk.Button(search_frame, text="🔍 Search", command=self.filter_steps, style="Ghost.TButton").pack(side="left", padx=(8, 0))
-        ttk.Button(search_frame, text="✖ Clear", command=self.clear_filter, style="Ghost.TButton").pack(side="left", padx=6)
+        # Step type filter dropdown
+        ttk.Label(filter_frame, text="Step Type:", style="Case.TLabelframe.Label").pack(side='left', padx=(0, 5))
+        self.step_type_filter_var = tk.StringVar(value="All")
+        self.step_type_filter = ttk.Combobox(filter_frame, textvariable=self.step_type_filter_var,
+                                             values=["All", "Copy File", "Check Log File", "Check Database Entry"],
+                                             width=20, state="readonly", style="Step.TCombobox")
+        self.step_type_filter.pack(side='left', padx=(0, 15))
+        self.step_type_filter.bind("<<ComboboxSelected>>", lambda e: self.apply_filters())
+        
+        # Clear filters button
+        ttk.Button(filter_frame, text="✖ Clear All Filters", command=self.clear_all_filters, style="Ghost.TButton").pack(side='left', padx=(0, 15))
+        
+        # Toggle output button
+        self.toggle_output_btn = ttk.Button(filter_frame, text="📊 Show Output", command=self.toggle_output, style="Ghost.TButton")
+        self.toggle_output_btn.pack(side='left', padx=(0, 5))
 
         # Scrollable steps container
         steps_container = ttk.Frame(self.frame, style="CaseInner.TFrame")
@@ -288,11 +627,25 @@ class TestCaseFrame:
             messagebox.showwarning("Rename Step", "No step selected.")
             return
         step = self.steps[self.selected_step_index]
-        new_name = simpledialog.askstring("Rename Step", f"Enter new name for Step {self.selected_step_index + 1}:", initialvalue=step.step_name)
-        if new_name:
-            step.step_name = new_name
+        step_num = self.selected_step_index + 1
+        
+        # Extract current custom name (without "Step X: " prefix if it exists)
+        current_name = step.step_name
+        if current_name.startswith(f"Step {step_num}"):
+            # Remove the prefix to show only the custom part
+            current_name = current_name.replace(f"Step {step_num}: ", "").replace(f"Step {step_num}", "")
+        
+        new_custom_name = simpledialog.askstring(
+            "Rename Step", 
+            f"Enter custom name for Step {step_num}:\n(Step number prefix will be added automatically)", 
+            initialvalue=current_name
+        )
+        
+        if new_custom_name:
+            # Always prepend "Step X: " to the custom name
+            step.step_name = f"Step {step_num}: {new_custom_name}"
             category = step.category.get()
-            step.frame.config(text=f"{new_name} [{category}]")
+            step.frame.config(text=f"{step.step_name} [{category}]")
 
     def rename_test_case(self):
         new_name = simpledialog.askstring("Rename Test Case", "Enter new test case name:", initialvalue=self.name)
@@ -315,19 +668,33 @@ class TestCaseFrame:
                 step.frame.config(text=step_data["name"])
             step.step_type.set(step_data["type"])
             step.show_fields()
+            
+            # Load other fields first
             for key, widget in step.details.items():
+                if key == "from_files" or key == "from":
+                    continue  # Handle these separately for Copy File steps
                 value = step_data["details"].get(key)
                 if value is not None:
                     if isinstance(widget, ttk.Combobox):
                         widget.set(value)
                     elif isinstance(widget, tk.Entry):
                         widget.delete(0, tk.END)
-                        widget.insert(0, value)
-                    elif key == "from_files":
-                        step.details["from_files"] = value
-                        if "from" in step.details:
-                            step.details["from"].delete(0, tk.END)
-                            step.details["from"].insert(0, ", ".join(value))
+                        widget.insert(0, str(value))
+            
+            # Handle from_files separately for Copy File step type
+            if step_data["type"] == "Copy File" and "from_files" in step_data["details"]:
+                from_files_data = step_data["details"]["from_files"]
+                if isinstance(from_files_data, list):
+                    from_files_list = from_files_data
+                else:
+                    # Handle string or other formats
+                    from_files_list = [str(from_files_data)]
+                
+                step.details["from_files"] = from_files_list
+                # Update the "from" entry field with the file list
+                if "from" in step.details and isinstance(step.details["from"], tk.Entry):
+                    step.details["from"].delete(0, tk.END)
+                    step.details["from"].insert(0, "; ".join(from_files_list))
 
             if step_data["type"] == "Check Database Entry":
                 for idx, col in enumerate(step_data["details"].get("columns", [])):
@@ -340,24 +707,29 @@ class TestCaseFrame:
 
             self.steps.append(step)
 
-    def filter_steps(self):
-        search = self.search_var.get().strip().lower()
+    def apply_filters(self):
+        """Apply both category and step type filters"""
+        category_filter = self.category_filter_var.get()
+        step_type_filter = self.step_type_filter_var.get()
+        
         for step in self.steps:
-            match = search in step.step_type.get().lower()
             step.frame.pack_forget()
-            if match or not search:
+            
+            # Check category filter
+            category_match = (category_filter == "All" or step.category.get() == category_filter)
+            
+            # Check step type filter
+            step_type_match = (step_type_filter == "All" or step.step_type.get() == step_type_filter)
+            
+            # Show step only if both filters match
+            if category_match and step_type_match:
                 step.frame.pack(fill="x", pady=8)
-
-    def clear_filter(self):
-        self.search_var.set("")
-        self.filter_steps()
     
-    def filter_by_category(self, category=None):
-        """Filter steps by category. If category is None, show all steps."""
-        for step in self.steps:
-            step.frame.pack_forget()
-            if category is None or step.category.get() == category:
-                step.frame.pack(fill="x", pady=8)
+    def clear_all_filters(self):
+        """Clear all filters and show all steps"""
+        self.category_filter_var.set("All")
+        self.step_type_filter_var.set("All")
+        self.apply_filters()
 
 
     def run(self):
@@ -377,44 +749,47 @@ class TestCaseFrame:
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
             log_lines = [f"[{timestamp}] Running {self.name}"]
-            html_report = [f"<h2>Test Case: {self.name}</h2><ul>"]
+            
+            # Initialize HTML report - will build proper structure at the end
+            html_report = []
             
             # Track execution metrics
             total_steps = len(self.steps)
             executed_steps = 0
             skipped_steps = 0
-            previous_step_passed = None
+            
+            # Initialize condition handler
+            condition_handler = ConditionHandler()
+            condition_handler.reset_history()
 
             for i, step in enumerate(self.steps, 1):
                 try:
                     step_data = step.get_step_data()
                     run_condition = step_data.get("run_condition", "Always")
                     category = step_data.get("category", "General")
+                    step_name = step_data.get('name', f'Step {i}')
+                    target_step_str = step_data.get("target_step", "")
                     
-                    # Check conditional execution
-                    should_run = True
-                    skip_reason = ""
+                    # Parse target step number if provided
+                    target_step = None
+                    if target_step_str and target_step_str.strip():
+                        try:
+                            target_step = int(target_step_str.strip())
+                        except ValueError:
+                            pass
                     
-                    if run_condition == "Skip":
-                        should_run = False
-                        skip_reason = "Marked as Skip"
-                    elif run_condition == "If Previous Passed" and previous_step_passed is False:
-                        should_run = False
-                        skip_reason = "Previous step failed"
-                    elif run_condition == "If Previous Failed" and previous_step_passed is True:
-                        should_run = False
-                        skip_reason = "Previous step passed"
-                    elif run_condition == "If Previous Passed" and previous_step_passed is None and i > 1:
-                        should_run = False
-                        skip_reason = "Previous step had no result"
+                    # Check conditional execution using ConditionHandler
+                    should_run, skip_reason = condition_handler.should_run_step(i, run_condition, total_steps, target_step)
                     
                     if not should_run:
-                        step_name = step_data.get('name', f'Step {i}')
                         msg = f"⏭ Step {i}: {step_name} [{category}]: SKIPPED - {skip_reason}"
                         self.output.insert(tk.END, msg + "\n")
                         log_lines.append(f"[{datetime.now()}] {msg}")
                         html_report.append(f"<li style='color: #888;'>{msg}</li>")
                         skipped_steps += 1
+                        
+                        # Record skipped step in history
+                        condition_handler.record_step_result(i, step_name, None, was_skipped=True)
                         continue
                     
                     executed_steps += 1
@@ -428,7 +803,6 @@ class TestCaseFrame:
                         time.sleep(delay)
                         log_lines.append(f"[{datetime.now()}] {msg}")
 
-                    step_name = step_data.get('name', f'Step {i}')
                     msg = f"➡ Step {i}: {step_name} [{category}]: {step_data['type']}"
                     self.output.insert(tk.END, msg + "\n")
                     details = step_data["details"]
@@ -437,6 +811,14 @@ class TestCaseFrame:
 
                     if step_data["type"] == "Copy File":
                         from_files = details.get("from_files", [])
+                        # Also check the "from" entry field for manually typed paths
+                        from_entry = details.get("from", "")
+                        
+                        # If from_files list is empty but entry has text, use that
+                        if not from_files and from_entry:
+                            # Split by semicolon or newline for multiple files
+                            from_files = [f.strip() for f in from_entry.replace('\n', ';').split(';') if f.strip()]
+                        
                         dest = details.get("to", "")
                         
                         if not from_files:
@@ -450,15 +832,43 @@ class TestCaseFrame:
                             self.output.insert(tk.END, msg + "\n")
                             log_lines.append(f"[{datetime.now()}] {msg}")
                         else:
-                            for src in from_files:
-                                if os.path.isfile(src):
-                                    shutil.copy(src, dest)
-                                    msg = f"✅ Copied '{src}' to '{dest}'"
-                                else:
-                                    msg = f"❌ Source file not found: {src}"
-                                    passed = False
+                            # Validate destination directory exists
+                            if not os.path.exists(dest):
+                                msg = f"❌ Destination path does not exist: {dest}"
+                                passed = False
                                 self.output.insert(tk.END, msg + "\n")
                                 log_lines.append(f"[{datetime.now()}] {msg}")
+                            elif not os.path.isdir(dest):
+                                msg = f"❌ Destination path is not a directory: {dest}"
+                                passed = False
+                                self.output.insert(tk.END, msg + "\n")
+                                log_lines.append(f"[{datetime.now()}] {msg}")
+                            else:
+                                # Copy each file with validation
+                                for src in from_files:
+                                    src = src.strip()
+                                    if not src:
+                                        continue
+                                    
+                                    if not os.path.exists(src):
+                                        msg = f"❌ Source path does not exist: {src}"
+                                        passed = False
+                                    elif not os.path.isfile(src):
+                                        msg = f"❌ Source path is not a file: {src}"
+                                        passed = False
+                                    else:
+                                        try:
+                                            shutil.copy(src, dest)
+                                            msg = f"✅ Copied '{os.path.basename(src)}' from '{src}' to '{dest}'"
+                                        except PermissionError as e:
+                                            msg = f"❌ Permission denied copying '{src}': {e}"
+                                            passed = False
+                                        except Exception as e:
+                                            msg = f"❌ Failed to copy '{src}': {e}"
+                                            passed = False
+                                    
+                                    self.output.insert(tk.END, msg + "\n")
+                                    log_lines.append(f"[{datetime.now()}] {msg}")
 
 
 
@@ -597,15 +1007,32 @@ class TestCaseFrame:
                     step_end_time = time.time()
                     step_execution_time = step_end_time - step_start_time
                     step.execution_time = step_execution_time
-                    step.last_result = "PASS" if passed else "FAIL"
-                    previous_step_passed = passed
+                    step_result = "PASS" if passed else "FAIL"
+                    step.last_result = step_result
+                    
+                    # Record step result in condition handler
+                    condition_handler.record_step_result(i, step_name, step_result, was_skipped=False)
                     
                     result_msg = f"{'✔️' if passed else '❌'} Step {i}: {step_name} [{category}] {'passed' if passed else 'failed'} ({step_execution_time:.2f}s)"
                     self.output.insert(tk.END, result_msg + "\n")
                     
-                    # Enhanced HTML reporting with color coding
-                    color = "#10b981" if passed else "#ef4444"
-                    html_report.append(f"<li style='color: {color};'>{result_msg}</li>")
+                    # Cucumber-style step entry for HTML table
+                    status_icon = '✓' if passed else '✗'
+                    status_color = '#10b981' if passed else '#ef4444'
+                    status_bg = '#f0fdf4' if passed else '#fef2f2'
+                    html_report.append(f"""
+                        <tr style='background: {status_bg}; border-left: 4px solid {status_color};'>
+                            <td style='padding: 12px; font-weight: 600;'>Step {i}</td>
+                            <td style='padding: 12px;'>{step_name}</td>
+                            <td style='padding: 12px; text-align: center;'>
+                                <span style='display: inline-block; padding: 4px 12px; border-radius: 4px; background: {status_color}; color: white; font-weight: 600;'>
+                                    {status_icon} {'PASSED' if passed else 'FAILED'}
+                                </span>
+                            </td>
+                            <td style='padding: 12px; text-align: center; font-weight: 600;'>{step_execution_time:.2f}s</td>
+                            <td style='padding: 12px; text-align: center;'><span style='padding: 4px 8px; background: #f3f4f6; border-radius: 4px; font-size: 12px;'>{category}</span></td>
+                        </tr>
+                    """)
                     log_lines.append(f"[{datetime.now()}] {result_msg}")
                     self.output.update()
                     if not passed:
@@ -616,41 +1043,238 @@ class TestCaseFrame:
                     step_execution_time = step_end_time - step_start_time if 'step_start_time' in locals() else 0
                     step.execution_time = step_execution_time
                     step.last_result = "ERROR"
-                    previous_step_passed = False
                     executed_steps += 1
                     step_name = step.get_step_data().get('name', f'Step {i}')
                     
+                    # Record error result in condition handler
+                    condition_handler.record_step_result(i, step_name, "ERROR", was_skipped=False)
+                    
                     msg = f"❌ Error in Step {i}: {step_name}: {e} ({step_execution_time:.2f}s)"
                     self.output.insert(tk.END, msg + "\n")
-                    html_report.append(f"<li style='color: #ef4444;'>{msg}</li>")
+                    
+                    # Cucumber-style error entry
+                    category = step.get_step_data().get('category', 'General')
+                    html_report.append(f"""
+                        <tr style='background: #fef2f2; border-left: 4px solid #dc2626;'>
+                            <td style='padding: 12px; font-weight: 600;'>Step {i}</td>
+                            <td style='padding: 12px;'>{step_name}</td>
+                            <td style='padding: 12px; text-align: center;'>
+                                <span style='display: inline-block; padding: 4px 12px; border-radius: 4px; background: #dc2626; color: white; font-weight: 600;'>
+                                    ⚠ ERROR
+                                </span>
+                            </td>
+                            <td style='padding: 12px; text-align: center; font-weight: 600;'>{step_execution_time:.2f}s</td>
+                            <td style='padding: 12px; text-align: center;'><span style='padding: 4px 8px; background: #f3f4f6; border-radius: 4px; font-size: 12px;'>{category}</span></td>
+                        </tr>
+                        <tr style='background: #fef2f2;'>
+                            <td colspan='5' style='padding: 8px 12px; color: #dc2626; font-size: 13px; border-left: 4px solid #dc2626;'>
+                                <strong>Error Details:</strong> {str(e)}
+                            </td>
+                        </tr>
+                    """)
                     log_lines.append(f"[{datetime.now()}] {msg}")
                     success = False
 
-            # Calculate total execution time
+            # Calculate comprehensive metrics
             total_execution_time = sum(step.execution_time for step in self.steps if hasattr(step, 'execution_time'))
+            passed_steps = sum(1 for s in self.steps if hasattr(s, 'last_result') and s.last_result == 'PASS')
+            failed_steps = sum(1 for s in self.steps if hasattr(s, 'last_result') and s.last_result == 'FAIL')
+            error_steps = sum(1 for s in self.steps if hasattr(s, 'last_result') and s.last_result == 'ERROR')
+            
+            # Calculate category breakdown
+            category_stats = {}
+            for step in self.steps:
+                step_data = step.get_step_data()
+                cat = step_data.get('category', 'General')
+                if cat not in category_stats:
+                    category_stats[cat] = {'passed': 0, 'failed': 0, 'skipped': 0, 'total': 0}
+                category_stats[cat]['total'] += 1
+                if hasattr(step, 'last_result'):
+                    if step.last_result == 'PASS':
+                        category_stats[cat]['passed'] += 1
+                    elif step.last_result in ['FAIL', 'ERROR']:
+                        category_stats[cat]['failed'] += 1
+                else:
+                    category_stats[cat]['skipped'] += 1
+            
+            # Calculate pass rate
+            pass_rate = (passed_steps / executed_steps * 100) if executed_steps > 0 else 0
+            
+            # Find slowest steps
+            step_times = [(s.get_step_data().get('name', f'Step {i+1}'), s.execution_time) 
+                         for i, s in enumerate(self.steps) if hasattr(s, 'execution_time')]
+            slowest_steps = sorted(step_times, key=lambda x: x[1], reverse=True)[:3]
             
             # Generate execution summary
             final_msg = f"\n{'✅ PASSED' if success else '❌ FAILED'}"
             summary = f"\n📊 Execution Summary:\n"
             summary += f"   • Total Steps: {total_steps}\n"
-            summary += f"   • Executed: {executed_steps}\n"
+            summary += f"   • Executed: {executed_steps} | Passed: {passed_steps} | Failed: {failed_steps} | Errors: {error_steps}\n"
             summary += f"   • Skipped: {skipped_steps}\n"
-            summary += f"   • Total Time: {total_execution_time:.2f}s\n"
+            summary += f"   • Pass Rate: {pass_rate:.1f}%\n"
+            summary += f"   • Total Time: {total_execution_time:.2f}s | Avg: {total_execution_time/executed_steps:.2f}s/step\n"
             
             self.output.insert(tk.END, final_msg + "\n")
             self.output.insert(tk.END, summary)
             
-            # Enhanced HTML summary
-            html_report.append(f"</ul>")
-            html_report.append(f"<div style='margin-top: 20px; padding: 15px; background: #f8fafc; border-radius: 8px;'>")
-            html_report.append(f"<h3 style='margin-top: 0;'>📊 Execution Summary</h3>")
-            html_report.append(f"<p><strong>Status:</strong> <span style='color: {'#10b981' if success else '#ef4444'};'>{('PASSED' if success else 'FAILED')}</span></p>")
-            html_report.append(f"<p><strong>Total Steps:</strong> {total_steps}</p>")
-            html_report.append(f"<p><strong>Executed:</strong> {executed_steps}</p>")
-            html_report.append(f"<p><strong>Skipped:</strong> {skipped_steps}</p>")
-            html_report.append(f"<p><strong>Total Execution Time:</strong> {total_execution_time:.2f}s</p>")
-            html_report.append(f"<p><strong>Timestamp:</strong> {timestamp}</p>")
-            html_report.append(f"</div>")
+            # Build complete HTML structure with proper order: Banner -> Summary -> Steps Table -> Metrics
+            complete_html = []
+            
+            # 1. Cucumber-style status banner (at top)
+            status_bg = '#5cb85c' if success else '#d9534f'
+            complete_html.append(f"""
+            <div class='cucumber-banner' style='background: {status_bg}; padding: 25px; margin: 30px 0; border-radius: 8px; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);'>
+                <div style='display: flex; justify-content: space-between; align-items: center;'>
+                    <div>
+                        <h2 style='margin: 0; font-size: 28px; font-weight: 600;'>{'✓' if success else '✗'} Feature: {self.name}</h2>
+                        <p style='margin: 8px 0 0 0; opacity: 0.95; font-size: 15px;'>Scenario executed on {datetime.now().strftime("%Y-%m-%d at %H:%M:%S")}</p>
+                    </div>
+                    <div class='stats-badge' style='text-align: right;'>
+                        <div style='font-size: 42px; font-weight: bold;'>{pass_rate:.0f}%</div>
+                        <div style='font-size: 13px; opacity: 0.9; text-transform: uppercase; letter-spacing: 1px;'>Success Rate</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- JUnit-style summary bar -->
+            <div class='junit-summary' style='display: flex; gap: 0; border-radius: 8px; overflow: hidden; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
+                <div style='flex: 1; background: #5cb85c; color: white; padding: 20px; text-align: center;'>
+                    <div style='font-size: 32px; font-weight: bold;'>{passed_steps}</div>
+                    <div style='font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin-top: 5px;'>Passed</div>
+                </div>
+                <div style='flex: 1; background: #d9534f; color: white; padding: 20px; text-align: center;'>
+                    <div style='font-size: 32px; font-weight: bold;'>{failed_steps}</div>
+                    <div style='font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin-top: 5px;'>Failed</div>
+                </div>
+                <div style='flex: 1; background: #f0ad4e; color: white; padding: 20px; text-align: center;'>
+                    <div style='font-size: 32px; font-weight: bold;'>{error_steps}</div>
+                    <div style='font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin-top: 5px;'>Errors</div>
+                </div>
+                <div style='flex: 1; background: #777; color: white; padding: 20px; text-align: center;'>
+                    <div style='font-size: 32px; font-weight: bold;'>{skipped_steps}</div>
+                    <div style='font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin-top: 5px;'>Skipped</div>
+                </div>
+                <div style='flex: 1; background: #5bc0de; color: white; padding: 20px; text-align: center;'>
+                    <div style='font-size: 32px; font-weight: bold;'>{total_steps}</div>
+                    <div style='font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin-top: 5px;'>Total</div>
+                </div>
+            </div>
+            
+            <!-- Cucumber-style Steps Table -->
+            <div class='cucumber-steps-table' style='margin: 30px 0;'>
+                <h3 style='color: #333; font-size: 20px; margin-bottom: 20px; border-bottom: 2px solid #e0e0e0; padding-bottom: 10px;'>
+                    📋 Scenario Steps Details
+                </h3>
+                <table style='width: 100%; border-collapse: separate; border-spacing: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-radius: 8px; overflow: hidden; background: white;'>
+                    <thead>
+                        <tr style='background: linear-gradient(to right, #4a5568, #2d3748); color: white;'>
+                            <th style='padding: 15px; text-align: left; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; width: 10%;'>Step</th>
+                            <th style='padding: 15px; text-align: left; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; width: 40%;'>Given/When/Then</th>
+                            <th style='padding: 15px; text-align: center; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; width: 15%;'>Status</th>
+                            <th style='padding: 15px; text-align: center; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; width: 15%;'>Duration</th>
+                            <th style='padding: 15px; text-align: center; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; width: 20%;'>Category</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            """)
+            
+            # Add all step rows
+            complete_html.extend(html_report)
+            
+            complete_html.append("""</tbody></table></div>""")
+            complete_html.append(f"""
+            
+            <!-- JUnit-style visual progress bar -->
+            <div style='margin: 25px 0;'>
+                <h3 style='color: #333; font-size: 18px; margin-bottom: 15px;'>Test Execution Progress</h3>
+                <div style='display: flex; height: 40px; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
+                    <div style='flex: {passed_steps}; background: #10b981; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 14px;'>
+                        {passed_steps if passed_steps > 0 else ''}
+                    </div>
+                    <div style='flex: {failed_steps}; background: #ef4444; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 14px;'>
+                        {failed_steps if failed_steps > 0 else ''}
+                    </div>
+                    <div style='flex: {error_steps}; background: #f59e0b; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 14px;'>
+                        {error_steps if error_steps > 0 else ''}
+                    </div>
+                    <div style='flex: {skipped_steps}; background: #9ca3af; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 14px;'>
+                        {skipped_steps if skipped_steps > 0 else ''}
+                    </div>
+                </div>
+                <div style='display: flex; justify-content: space-between; margin-top: 10px; font-size: 13px; color: #6b7280;'>
+                    <span>✓ Passed: {passed_steps}</span>
+                    <span>✗ Failed: {failed_steps}</span>
+                    <span>⚠ Errors: {error_steps}</span>
+                    <span>⊘ Skipped: {skipped_steps}</span>
+                </div>
+            </div>
+            
+            <!-- Execution Time Analysis -->
+            <div style='margin-top: 25px; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);'>
+                <h3 style='margin-top: 0; color: #1f2937;'>⏱️ Execution Time Analysis</h3>
+                <div style='display: flex; justify-content: space-between; margin-bottom: 15px;'>
+                    <div>
+                        <div style='font-size: 14px; color: #6b7280;'>Total Duration</div>
+                        <div style='font-size: 24px; font-weight: bold; color: #3b82f6;'>{total_execution_time:.2f}s</div>
+                    </div>
+                    <div>
+                        <div style='font-size: 14px; color: #6b7280;'>Average per Step</div>
+                        <div style='font-size: 24px; font-weight: bold; color: #3b82f6;'>{total_execution_time/executed_steps if executed_steps > 0 else 0:.2f}s</div>
+                    </div>
+                    <div>
+                        <div style='font-size: 14px; color: #6b7280;'>Executed Steps</div>
+                        <div style='font-size: 24px; font-weight: bold; color: #3b82f6;'>{executed_steps}/{total_steps}</div>
+                    </div>
+                </div>
+                
+                <h4 style='color: #1f2937; margin-top: 20px;'>🐌 Slowest Steps</h4>
+                <ul style='list-style: none; padding: 0;'>
+            """)
+            
+            for step_name, step_time in slowest_steps:
+                complete_html.append(f"<li style='padding: 8px; background: #f9fafb; margin: 5px 0; border-radius: 6px;'>{step_name}: <strong>{step_time:.2f}s</strong></li>")
+            
+            complete_html.append(f"""
+                </ul>
+            </div>
+            
+            <!-- Category Breakdown -->
+            <div style='margin-top: 25px; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);'>
+                <h3 style='margin-top: 0; color: #1f2937;'>📂 Category Breakdown</h3>
+                <table style='width: 100%; border-collapse: collapse;'>
+                    <thead>
+                        <tr style='background: #f3f4f6;'>
+                            <th style='padding: 10px; text-align: left; border-bottom: 2px solid #e5e7eb;'>Category</th>
+                            <th style='padding: 10px; text-align: center; border-bottom: 2px solid #e5e7eb;'>Total</th>
+                            <th style='padding: 10px; text-align: center; border-bottom: 2px solid #e5e7eb;'>Passed</th>
+                            <th style='padding: 10px; text-align: center; border-bottom: 2px solid #e5e7eb;'>Failed</th>
+                            <th style='padding: 10px; text-align: center; border-bottom: 2px solid #e5e7eb;'>Skipped</th>
+                            <th style='padding: 10px; text-align: center; border-bottom: 2px solid #e5e7eb;'>Success Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            """)
+            
+            for category, stats in sorted(category_stats.items()):
+                executed_in_cat = stats['total'] - stats['skipped']
+                success_rate_cat = (stats['passed'] / executed_in_cat * 100) if executed_in_cat > 0 else 0
+                rate_color = '#10b981' if success_rate_cat >= 80 else '#f59e0b' if success_rate_cat >= 50 else '#ef4444'
+                complete_html.append(f"""
+                    <tr style='border-bottom: 1px solid #e5e7eb;'>
+                        <td style='padding: 10px;'><strong>{category}</strong></td>
+                        <td style='padding: 10px; text-align: center;'>{stats['total']}</td>
+                        <td style='padding: 10px; text-align: center; color: #10b981;'>{stats['passed']}</td>
+                        <td style='padding: 10px; text-align: center; color: #ef4444;'>{stats['failed']}</td>
+                        <td style='padding: 10px; text-align: center; color: #6b7280;'>{stats['skipped']}</td>
+                        <td style='padding: 10px; text-align: center;'><span style='color: {rate_color}; font-weight: bold;'>{success_rate_cat:.0f}%</span></td>
+                    </tr>
+                """)
+            
+            complete_html.append(f"""
+                    </tbody>
+                </table>
+            </div>
+            """)
             
             log_lines.append(f"[{datetime.now()}] {final_msg}")
             log_lines.append(f"[{datetime.now()}] {summary}")
@@ -664,14 +1288,52 @@ class TestCaseFrame:
                 log_file.write("\n".join(log_lines))
 
             try:
+                html_template = f"""
+                <!DOCTYPE html>
+                <html lang="en">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Test Report - {self.name}</title>
+                    <style>
+                        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+                        body {{ 
+                            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+                            background: #f9fafb;
+                            padding: 40px 20px;
+                            line-height: 1.6;
+                            color: #1f2937;
+                        }}
+                        .container {{ max-width: 1200px; margin: 0 auto; }}
+                        h2, h3, h4 {{ margin-bottom: 15px; }}
+                        ul {{ margin: 15px 0; padding-left: 0; }}
+                        li {{ 
+                            padding: 12px 15px; 
+                            margin: 8px 0; 
+                            border-radius: 8px; 
+                            background: white;
+                            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                            list-style: none;
+                        }}
+                        @media print {{
+                            body {{ background: white; }}
+                            .no-print {{ display: none; }}
+                        }}
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        {"\n".join(html_report)}
+                    </div>
+                </body>
+                </html>
+                """
                 with open(html_path, "w", encoding="utf-8") as html_file:
-                    html_file.write("<html><body>" + "\n".join(html_report) + "</body></html>")
-                    combined_report_data.append("".join(html_report))
+                    html_file.write(html_template)
+                    combined_report_data.append("".join(complete_html))
 
             except Exception as e:
                 self.output.insert(tk.END, f"❌ Failed to write HTML report: {e}\n")
-
-            save_combined_html()
 
         threading.Thread(target=execute, daemon=True).start()
 
@@ -976,6 +1638,8 @@ class TestCaseGUI:
 
     def run_all_cases(self):
         def run_all():
+            global combined_report_data
+            combined_report_data = []  # Clear previous data
             start_time = time.time()
             results = []
             for name, frame in self.case_frames.items():
@@ -990,6 +1654,10 @@ class TestCaseGUI:
             summary += f"\n\nTotal execution time: {total_time:.2f}s"
             with open("test_summary.txt", "w") as f:
                 f.write(summary)
+            
+            # Generate combined HTML report after all tests complete
+            save_combined_html()
+            
             messagebox.showinfo("Summary Report", f"✅ Completed test cases (Sequential):\n{summary}\nSaved to test_summary.txt")
 
         threading.Thread(target=run_all, daemon=True).start()
@@ -997,6 +1665,8 @@ class TestCaseGUI:
     def run_all_cases_parallel(self):
         """Run all test cases in parallel for faster execution"""
         def run_parallel():
+            global combined_report_data
+            combined_report_data = []  # Clear previous data
             import concurrent.futures
             start_time = time.time()
             results = []
@@ -1026,6 +1696,10 @@ class TestCaseGUI:
             summary += f"\n\nTotal execution time (Parallel): {total_time:.2f}s"
             with open("test_summary_parallel.txt", "w") as f:
                 f.write(summary)
+            
+            # Generate combined HTML report after all tests complete
+            save_combined_html()
+            
             messagebox.showinfo("Summary Report", f"✅ Completed test cases (Parallel):\n{summary}\nSaved to test_summary_parallel.txt")
         
         threading.Thread(target=run_parallel, daemon=True).start()
