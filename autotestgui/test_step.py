@@ -56,17 +56,42 @@ class TestStep:
         
         ttk.Label(type_frame, text="Step Type:", style="Step.TLabel").pack(side='left', padx=(5, 5))
         self.type_dropdown = ttk.Combobox(type_frame, values=[
-            "Copy File", "Move File", "Delete File/Folder", "Rename File", "Create Directory",
-            "Check File Exists", "Compare Files", "Extract Archive", "Wait for File",
-            "Run Command", "Start Process", "Stop Process", "Check Process Running",
-            "Check Disk Space", "Check Memory",
-            "Check Log File", "Check Database Entry"
+            "── File Operations ──",
+            "Compare Files",
+            "Copy File",
+            "Create Directory",
+            "Delete File/Folder",
+            "Extract Archive",
+            "Move File",
+            "Rename File",
+            "Wait for File",
+            "── File Validation ──",
+            "Check File Exists",
+            "── System Operations ──",
+            "Check Disk Space",
+            "Check Memory",
+            "Check Process Running",
+            "Run Command",
+            "Start Process",
+            "Stop Process",
+            "── Application Testing ──",
+            "Check Database Entry",
+            "Check Log File"
         ], state="readonly", textvariable=self.step_type, style="Step.TCombobox", width=25)
         self.type_dropdown.pack(side='left', padx=(0, 5))
-        self.type_dropdown.bind("<<ComboboxSelected>>", self.show_fields)
+        self.type_dropdown.bind("<<ComboboxSelected>>", self.on_step_type_selected)
 
         self.fields_frame = ttk.Frame(self.frame, style="StepInner.TFrame")
         self.fields_frame.grid(row=2, column=0, columnspan=3, padx=5, pady=5)
+    
+    def on_step_type_selected(self, event=None):
+        """Handle step type selection and prevent selecting category headers"""
+        selected = self.step_type.get()
+        # Prevent selecting category headers (items starting with ──)
+        if selected.startswith("──"):
+            self.step_type.set("")  # Clear the selection
+            return
+        self.show_fields(event)
 
     def show_fields(self, event=None):
         for widget in self.fields_frame.winfo_children():
