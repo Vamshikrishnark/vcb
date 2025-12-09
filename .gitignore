@@ -1,1 +1,5 @@
 autotestgui/__pycache__/test_step.cpython-313.pyc
+TestReports/*
+test_summary_parallel.txt
+test_summary.txt
+autotestgui/__pycache__/*

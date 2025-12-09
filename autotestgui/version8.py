@@ -33,36 +33,45 @@ def save_combined_html():
     
     test_case_summaries = []  # Store compact summaries for quick access table
     
-    # Parse HTML to extract statistics (simple regex-based extraction)
-    import re
-    for report_html in combined_report_data:
-        # Extract test case name
-        name_match = re.search(r'Feature: ([^<]+)', report_html)
-        test_name = name_match.group(1) if name_match else "Unknown"
+    # Extract statistics from structured report data
+    for report_data in combined_report_data:
+        # Handle both old (string) and new (dict) formats for backward compatibility
+        if isinstance(report_data, dict):
+            test_name = report_data['name']
+            passed_steps = report_data['passed_steps']
+            failed_steps = report_data['failed_steps']
+            total_steps = report_data['total_steps']
+            exec_time = report_data['execution_time']
+            is_passed = report_data['success']
+        else:
+            # Fallback to regex parsing for old format (string)
+            import re
+            report_html = report_data
+            name_match = re.search(r'Feature: ([^<]+)', report_html)
+            test_name = name_match.group(1) if name_match else "Unknown"
+            
+            is_passed = '#5cb85c' in report_html.split('cucumber-banner')[1].split('</div>')[0] if 'cucumber-banner' in report_html else False
+            
+            passed_match = re.search(r'(\d+)</div>\s*<div[^>]*>Passed</div>', report_html)
+            failed_match = re.search(r'(\d+)</div>\s*<div[^>]*>Failed</div>', report_html)
+            total_match = re.search(r'(\d+)</div>\s*<div[^>]*>Total</div>', report_html)
+            
+            passed_steps = int(passed_match.group(1)) if passed_match else 0
+            failed_steps = int(failed_match.group(1)) if failed_match else 0
+            total_steps = int(total_match.group(1)) if total_match else 0
+            
+            time_match = re.search(r'Total Duration</div>\s*<div[^>]*>([\d.]+)s</div>', report_html)
+            exec_time = float(time_match.group(1)) if time_match else 0.0
         
-        # Determine pass/fail from banner color
-        is_passed = '#5cb85c' in report_html.split('cucumber-banner')[1].split('</div>')[0] if 'cucumber-banner' in report_html else False
+        # Aggregate statistics
         if is_passed:
             total_passed_cases += 1
         else:
             total_failed_cases += 1
         
-        # Extract step counts - improved regex to handle various whitespace/formatting
-        passed_match = re.search(r'(\d+)</div>\s*<div[^>]*>Passed</div>', report_html)
-        failed_match = re.search(r'(\d+)</div>\s*<div[^>]*>Failed</div>', report_html)
-        total_match = re.search(r'(\d+)</div>\s*<div[^>]*>Total</div>', report_html)
-        
-        passed_steps = int(passed_match.group(1)) if passed_match else 0
-        failed_steps = int(failed_match.group(1)) if failed_match else 0
-        total_steps = int(total_match.group(1)) if total_match else 0
-        
         total_passed_steps += passed_steps
         total_failed_steps += failed_steps
         total_steps_all += total_steps
-        
-        # Extract execution time
-        time_match = re.search(r'Total Duration</div>\s*<div[^>]*>([\d.]+)s</div>', report_html)
-        exec_time = float(time_match.group(1)) if time_match else 0.0
         total_execution_time += exec_time
         
         # Store summary for table
@@ -325,6 +334,9 @@ def save_combined_html():
         status_icon = '✓' if summary['status'] == 'PASS' else '✗'
         status_color = '#10b981' if summary['status'] == 'PASS' else '#ef4444'
         
+        # Extract HTML from report_data (handle both dict and string formats)
+        report_html = report_data['html'] if isinstance(report_data, dict) else report_data
+        
         combined_html += f"""
             <div class="compact-test" id="test-{idx}">
                 <div class="compact-header" onclick="toggleDetails({idx})">
@@ -338,7 +350,7 @@ def save_combined_html():
                     <span id="arrow-{idx}" style="font-size: 14px; color: #64748b;">▼</span>
                 </div>
                 <div id="details-{idx}" class="details">
-                    {report_data}
+                    {report_html}
                 </div>
             </div>
 """
@@ -809,7 +821,43 @@ class TestCaseFrame:
                     log_lines.append(f"[{datetime.now()}] {msg}")
                     passed = True
 
-                    if step_data["type"] == "Copy File":
+                    # Check if this is a new modular step type
+                    modular_step_types = [
+                        "Move File", "Delete File/Folder", "Rename File", "Create Directory",
+                        "Check File Exists", "Compare Files", "Extract Archive", "Wait for File",
+                        "Run Command", "Start Process", "Stop Process", "Check Process Running",
+                        "Check Disk Space", "Check Memory"
+                    ]
+                    
+                    if step_data["type"] in modular_step_types:
+                        try:
+                            from step_types.step_executor import StepExecutor
+                            success_result, message, output = StepExecutor.execute_step(step_data["type"], details)
+                            
+                            icon = "✅" if success_result else "❌"
+                            msg = f"{icon} {message}"
+                            self.output.insert(tk.END, msg + "\n")
+                            
+                            if output and output != message:
+                                self.output.insert(tk.END, f"Output:\n{output}\n")
+                            
+                            log_lines.append(f"[{datetime.now()}] {msg}")
+                            if output and output != message:
+                                log_lines.append(f"[{datetime.now()}] Output: {output}")
+                            
+                            passed = success_result
+                        except ImportError as e:
+                            msg = f"❌ Module import failed: {str(e)}. Install required dependencies."
+                            self.output.insert(tk.END, msg + "\n")
+                            log_lines.append(f"[{datetime.now()}] {msg}")
+                            passed = False
+                        except Exception as e:
+                            msg = f"❌ Step execution error: {str(e)}"
+                            self.output.insert(tk.END, msg + "\n")
+                            log_lines.append(f"[{datetime.now()}] {msg}")
+                            passed = False
+                    
+                    elif step_data["type"] == "Copy File":
                         from_files = details.get("from_files", [])
                         # Also check the "from" entry field for manually typed paths
                         from_entry = details.get("from", "")
@@ -1330,7 +1378,20 @@ class TestCaseFrame:
                 """
                 with open(html_path, "w", encoding="utf-8") as html_file:
                     html_file.write(html_template)
-                    combined_report_data.append("".join(complete_html))
+                    # Store report data with metadata for accurate combined report generation
+                    report_data = {
+                        'html': "".join(complete_html),
+                        'name': self.name,
+                        'passed_steps': passed_steps,
+                        'failed_steps': failed_steps,
+                        'total_steps': total_steps,
+                        'execution_time': total_execution_time,
+                        'success': success
+                    }
+                    combined_report_data.append(report_data)
+                    
+                    # Generate combined report immediately after individual test execution
+                    save_combined_html()
 
             except Exception as e:
                 self.output.insert(tk.END, f"❌ Failed to write HTML report: {e}\n")

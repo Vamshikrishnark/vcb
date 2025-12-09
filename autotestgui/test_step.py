@@ -56,7 +56,11 @@ class TestStep:
         
         ttk.Label(type_frame, text="Step Type:", style="Step.TLabel").pack(side='left', padx=(5, 5))
         self.type_dropdown = ttk.Combobox(type_frame, values=[
-            "Copy File", "Check Log File", "Check Database Entry"
+            "Copy File", "Move File", "Delete File/Folder", "Rename File", "Create Directory",
+            "Check File Exists", "Compare Files", "Extract Archive", "Wait for File",
+            "Run Command", "Start Process", "Stop Process", "Check Process Running",
+            "Check Disk Space", "Check Memory",
+            "Check Log File", "Check Database Entry"
         ], state="readonly", textvariable=self.step_type, style="Step.TCombobox", width=25)
         self.type_dropdown.pack(side='left', padx=(0, 5))
         self.type_dropdown.bind("<<ComboboxSelected>>", self.show_fields)
@@ -134,6 +138,35 @@ class TestStep:
             row += 1
             add_col_btn = ttk.Button(self.fields_frame, text="Add Column", command=self.add_column_entry, style="Ghost.TButton")
             add_col_btn.grid(row=row, column=0, columnspan=2)
+        
+        # Import and use the modular UI builders
+        else:
+            try:
+                import sys
+                sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                from step_types.step_ui_builder import StepTypeUI
+                
+                ui_map = {
+                    "Move File": StepTypeUI.build_move_file_ui,
+                    "Delete File/Folder": StepTypeUI.build_delete_path_ui,
+                    "Rename File": StepTypeUI.build_rename_path_ui,
+                    "Create Directory": StepTypeUI.build_create_directory_ui,
+                    "Check File Exists": StepTypeUI.build_check_path_exists_ui,
+                    "Compare Files": StepTypeUI.build_compare_files_ui,
+                    "Extract Archive": StepTypeUI.build_extract_archive_ui,
+                    "Wait for File": StepTypeUI.build_wait_for_file_ui,
+                    "Run Command": StepTypeUI.build_run_command_ui,
+                    "Start Process": StepTypeUI.build_start_process_ui,
+                    "Stop Process": StepTypeUI.build_stop_process_ui,
+                    "Check Process Running": StepTypeUI.build_check_process_ui,
+                    "Check Disk Space": StepTypeUI.build_check_disk_space_ui,
+                    "Check Memory": StepTypeUI.build_check_memory_ui,
+                }
+                
+                if step_type in ui_map:
+                    ui_map[step_type](self.fields_frame, self.details, row)
+            except Exception as e:
+                ttk.Label(self.fields_frame, text=f"Error loading UI: {str(e)}", style="Step.TLabel").grid(row=row, column=0, columnspan=3)
 
     def browse_files(self):
         files = filedialog.askopenfilenames()

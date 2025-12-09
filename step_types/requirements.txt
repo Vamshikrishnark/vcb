@@ -1,0 +1,2 @@
+# Additional dependencies for new step types
+psutil>=5.9.0  # For process and system information
